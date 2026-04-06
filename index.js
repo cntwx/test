@@ -320,7 +320,16 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
 ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/{*path}', (req, res) => {
+app.use((req, res, next) => {
+    // ถ้า request เป็น API → ปล่อย next()
+    if (req.path.startsWith('/auth') ||
+        req.path.startsWith('/places') ||
+        req.path.startsWith('/reviews') ||
+        req.path.startsWith('/comments') ||
+        req.path.startsWith('/likes')) {
+        return next(); 
+    }
+    // ไม่ใช่ API → ส่ง SPA
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 

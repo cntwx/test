@@ -2,7 +2,7 @@
 // ถ้า localhost จะใช้ port 3000
 const API = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
-    : window.location.origin;  // ใช้ URL เดียวกับเว็บเลย
+    : 'https://test-f6nu.onrender.com'; 
 
 function getToken() { return localStorage.getItem('token'); }
 function isLoggedIn() { return !!getToken(); }
