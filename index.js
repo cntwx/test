@@ -321,7 +321,7 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/{*path}', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
 // ===== START =====

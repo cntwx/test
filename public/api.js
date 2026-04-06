@@ -24,7 +24,7 @@ async function apiFetch(path, options = {}) {
 function doLogout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    location.href = 'index.html';
+    location.href = 'homepage.html';
 }
 
 function updateNav() {
