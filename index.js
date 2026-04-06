@@ -195,61 +195,81 @@ app.delete('/places/:id', authMiddleware, (req, res) => {
 /* =========================
    REVIEWS
 ========================= */
-// เหมือนเดิม
+// โหลดรีวิวของสถานที่
 app.get('/reviews/place/:placeId', (req, res) => {
-    connection.query(
-        `SELECT r.*, u.fname, u.lname, u.avatar,
-            COUNT(DISTINCT l.id) as like_count
+    const placeId = req.params.placeId;
+    if (!placeId) return res.status(400).json({ message: 'placeId ไม่ถูกต้อง' });
+
+    const sql = `
+        SELECT r.id, r.place_id, r.user_id, r.title, r.content, r.rating, r.created_at,
+               u.fname, u.lname, u.avatar,
+               COUNT(l.review_id) AS like_count
         FROM reviews r
-        JOIN users u ON u.id = r.user_id
+        LEFT JOIN users u ON u.id = r.user_id
         LEFT JOIN likes l ON l.review_id = r.id
         WHERE r.place_id = ?
         GROUP BY r.id
-        ORDER BY r.created_at DESC`,
-        [req.params.placeId],
-        (err, rows) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.json(rows);
+        ORDER BY r.created_at DESC
+    `;
+
+    connection.query(sql, [placeId], (err, rows) => {
+        if (err) {
+            console.error('❌ Error fetching reviews:', err.message);
+            return res.status(500).json({ message: 'ไม่สามารถโหลดรีวิวได้' });
         }
-    );
+        res.json(rows);
+    });
 });
 
+// โหลดรีวิวทั้งหมด (admin)
 app.get('/reviews', authMiddleware, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
-    connection.query(
-        `SELECT r.*, u.fname, u.lname, p.name as place_name
+
+    const sql = `
+        SELECT r.*, u.fname, u.lname, p.name as place_name
         FROM reviews r
         JOIN users u ON u.id = r.user_id
         JOIN places p ON p.id = r.place_id
-        ORDER BY r.created_at DESC`,
-        (err, rows) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.json(rows);
+        ORDER BY r.created_at DESC
+    `;
+
+    connection.query(sql, (err, rows) => {
+        if (err) {
+            console.error('❌ Error fetching all reviews:', err.message);
+            return res.status(500).json({ message: 'ไม่สามารถโหลดรีวิวทั้งหมดได้' });
         }
-    );
+        res.json(rows);
+    });
 });
 
+// เพิ่มรีวิว
 app.post('/reviews', authMiddleware, (req, res) => {
     const { place_id, title, content, rating } = req.body;
     if (!place_id || !title || !content || !rating)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
-    connection.query(
-        'INSERT INTO reviews (place_id, user_id, title, content, rating) VALUES (?, ?, ?, ?, ?)',
-        [place_id, req.user.id, title, content, rating],
-        (err, result) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.status(201).json({ message: 'โพสรีวิวสำเร็จ', id: result.insertId });
+    const sql = `
+        INSERT INTO reviews (place_id, user_id, title, content, rating)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+    connection.query(sql, [place_id, req.user.id, title, content, rating], (err, result) => {
+        if (err) {
+            console.error('❌ Error inserting review:', err.message);
+            return res.status(500).json({ message: 'โพสรีวิวไม่สำเร็จ' });
         }
-    );
+        res.status(201).json({ message: 'โพสรีวิวสำเร็จ', id: result.insertId });
+    });
 });
 
+// ลบรีวิว
 app.delete('/reviews/:id', authMiddleware, (req, res) => {
     connection.query('SELECT * FROM reviews WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
         if (!rows[0]) return res.status(404).json({ message: 'ไม่พบรีวิว' });
+
         if (rows[0].user_id !== req.user.id && req.user.role !== 'admin')
             return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
+
         connection.query('DELETE FROM reviews WHERE id = ?', [req.params.id], (err) => {
             if (err) return res.status(500).json({ message: err.message });
             res.json({ message: 'ลบสำเร็จ' });
