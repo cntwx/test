@@ -179,8 +179,9 @@ app.get('/reviews/place/:placeId', (req, res) => {
 ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-    // ถ้า request เป็น API ให้ next()
+// ===== SPA FALLBACK =====
+app.get('*', (req, res, next) => {
+    // ถ้า path เป็น API ให้ next()
     if (req.path.startsWith('/auth') ||
         req.path.startsWith('/places') ||
         req.path.startsWith('/reviews') ||
@@ -188,7 +189,8 @@ app.use((req, res, next) => {
         req.path.startsWith('/likes')) {
         return next();
     }
-    // ไม่ใช่ API → ส่งหน้า SPA
+
+    // ไม่ใช่ API → ส่ง SPA
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
