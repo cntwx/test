@@ -8,7 +8,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ===== CORS =====
+// ===== CORS ต้องมาก่อนสุด =====
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
@@ -138,31 +138,29 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
-// เพิ่มสถานที่ → ให้ทุก user เพิ่มได้
+// เพิ่มสถานที่ → user login ได้เลย
 app.post('/places', authMiddleware, (req, res) => {
     const { name, province, category, description, image } = req.body;
     if (!name || !province || !category || !description)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
-    const sql = `
-        INSERT INTO places (name, province, category, description, image, createdBy)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    connection.query(sql, [name, province, category, description, image || '', req.user.id], (err, result) => {
-        if (err) return res.status(500).json({ message: err.message });
-        res.status(201).json({ message: 'เพิ่มสถานที่สำเร็จ', id: result.insertId });
-    });
+    connection.query(
+        'INSERT INTO places (name, province, category, description, image, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, province, category, description, image || '', req.user.id],
+        (err, result) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.status(201).json({ message: 'เพิ่มสถานที่สำเร็จ', id: result.insertId });
+        }
+    );
 });
 
-// แก้ไขสถานที่ → เฉพาะ creator หรือ admin
+// แก้ไข → เฉพาะเจ้าของ หรือ admin
 app.put('/places/:id', authMiddleware, (req, res) => {
     const { name, province, category, description, image } = req.body;
-
-    connection.query('SELECT createdBy FROM places WHERE id = ?', [req.params.id], (err, rows) => {
+    connection.query('SELECT created_by FROM places WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
         if (!rows[0]) return res.status(404).json({ message: 'ไม่พบสถานที่' });
-
-        if (req.user.role !== 'admin' && rows[0].createdBy !== req.user.id)
+        if (req.user.role !== 'admin' && rows[0].created_by !== req.user.id)
             return res.status(403).json({ message: 'ไม่มีสิทธิ์แก้ไขสถานที่นี้' });
 
         connection.query(
@@ -176,13 +174,12 @@ app.put('/places/:id', authMiddleware, (req, res) => {
     });
 });
 
-// ลบสถานที่ → เฉพาะ creator หรือ admin
+// ลบ → เฉพาะเจ้าของ หรือ admin
 app.delete('/places/:id', authMiddleware, (req, res) => {
-    connection.query('SELECT createdBy FROM places WHERE id = ?', [req.params.id], (err, rows) => {
+    connection.query('SELECT created_by FROM places WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
         if (!rows[0]) return res.status(404).json({ message: 'ไม่พบสถานที่' });
-
-        if (req.user.role !== 'admin' && rows[0].createdBy !== req.user.id)
+        if (req.user.role !== 'admin' && rows[0].created_by !== req.user.id)
             return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบสถานที่นี้' });
 
         connection.query('DELETE FROM places WHERE id = ?', [req.params.id], (err) => {
@@ -194,82 +191,62 @@ app.delete('/places/:id', authMiddleware, (req, res) => {
 
 /* =========================
    REVIEWS
+   ⚠️ /reviews/place/:placeId ต้องมาก่อน /reviews และ /reviews/:id
 ========================= */
-// โหลดรีวิวของสถานที่
 app.get('/reviews/place/:placeId', (req, res) => {
-    const placeId = req.params.placeId;
-    if (!placeId) return res.status(400).json({ message: 'placeId ไม่ถูกต้อง' });
-
-    const sql = `
-        SELECT r.id, r.place_id, r.user_id, r.title, r.content, r.rating, r.created_at,
-               u.fname, u.lname, u.avatar,
-               COUNT(l.review_id) AS like_count
+    connection.query(
+        `SELECT r.*, u.fname, u.lname, u.avatar,
+            COUNT(DISTINCT l.id) as like_count
         FROM reviews r
-        LEFT JOIN users u ON u.id = r.user_id
+        JOIN users u ON u.id = r.user_id
         LEFT JOIN likes l ON l.review_id = r.id
         WHERE r.place_id = ?
         GROUP BY r.id
-        ORDER BY r.created_at DESC
-    `;
-
-    connection.query(sql, [placeId], (err, rows) => {
-        if (err) {
-            console.error('❌ Error fetching reviews:', err.message);
-            return res.status(500).json({ message: 'ไม่สามารถโหลดรีวิวได้' });
+        ORDER BY r.created_at DESC`,
+        [req.params.placeId],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json(rows);
         }
-        res.json(rows);
-    });
+    );
 });
 
-// โหลดรีวิวทั้งหมด (admin)
 app.get('/reviews', authMiddleware, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
-
-    const sql = `
-        SELECT r.*, u.fname, u.lname, p.name as place_name
+    connection.query(
+        `SELECT r.*, u.fname, u.lname, p.name as place_name
         FROM reviews r
         JOIN users u ON u.id = r.user_id
         JOIN places p ON p.id = r.place_id
-        ORDER BY r.created_at DESC
-    `;
-
-    connection.query(sql, (err, rows) => {
-        if (err) {
-            console.error('❌ Error fetching all reviews:', err.message);
-            return res.status(500).json({ message: 'ไม่สามารถโหลดรีวิวทั้งหมดได้' });
+        ORDER BY r.created_at DESC`,
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json(rows);
         }
-        res.json(rows);
-    });
+    );
 });
 
-// เพิ่มรีวิว
 app.post('/reviews', authMiddleware, (req, res) => {
     const { place_id, title, content, rating } = req.body;
     if (!place_id || !title || !content || !rating)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
-    const sql = `
-        INSERT INTO reviews (place_id, user_id, title, content, rating)
-        VALUES (?, ?, ?, ?, ?)
-    `;
-    connection.query(sql, [place_id, req.user.id, title, content, rating], (err, result) => {
-        if (err) {
-            console.error('❌ Error inserting review:', err.message);
-            return res.status(500).json({ message: 'โพสรีวิวไม่สำเร็จ' });
+    connection.query(
+        'INSERT INTO reviews (place_id, user_id, title, content, rating) VALUES (?, ?, ?, ?, ?)',
+        [place_id, req.user.id, title, content, rating],
+        (err, result) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.status(201).json({ message: 'โพสรีวิวสำเร็จ', id: result.insertId });
         }
-        res.status(201).json({ message: 'โพสรีวิวสำเร็จ', id: result.insertId });
-    });
+    );
 });
 
-// ลบรีวิว
 app.delete('/reviews/:id', authMiddleware, (req, res) => {
     connection.query('SELECT * FROM reviews WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
         if (!rows[0]) return res.status(404).json({ message: 'ไม่พบรีวิว' });
-
         if (rows[0].user_id !== req.user.id && req.user.role !== 'admin')
             return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
-
         connection.query('DELETE FROM reviews WHERE id = ?', [req.params.id], (err) => {
             if (err) return res.status(500).json({ message: err.message });
             res.json({ message: 'ลบสำเร็จ' });
@@ -360,16 +337,14 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
 ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-    // ถ้า request เป็น API → ปล่อย next()
-    if (req.path.startsWith('/auth') ||
-        req.path.startsWith('/places') ||
-        req.path.startsWith('/reviews') ||
-        req.path.startsWith('/comments') ||
-        req.path.startsWith('/likes')) {
-        return next(); 
+// ✅ SPA fallback — ส่ง homepage.html สำหรับทุก request ที่ไม่ใช่ API
+// วิธีนี้ถูกต้อง: ใช้ Express wildcard ที่รองรับ Express 5
+app.get('/{*path}', (req, res, next) => {
+    // ถ้าเป็น API path → ไม่ต้อง fallback
+    const apiPaths = ['/auth', '/places', '/reviews', '/comments', '/likes'];
+    if (apiPaths.some(p => req.path.startsWith(p))) {
+        return res.status(404).json({ message: 'API not found' });
     }
-    // ไม่ใช่ API → ส่ง SPA
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
