@@ -1,4 +1,4 @@
-const API = 'http://localhost:3000';
+const API = 'https://test-f6nu.onrender.com';
 
 function getToken() { return localStorage.getItem('token'); }
 function isLoggedIn() { return !!getToken(); }
