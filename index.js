@@ -189,7 +189,7 @@ app.get('/reviews/place/:placeId', (req, res) => {
         [req.params.placeId],
         (err, rows) => {
             if (err) return res.status(500).json({ message: err.message });
-            res.json(rows);
+            res.json(rows); 
         }
     );
 });
@@ -320,7 +320,16 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
 ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/{*path}', (req, res) => {
+app.use((req, res, next) => {
+    // ถ้า request เป็น API ก็ไป next() ปล่อยให้ route อื่น handle
+    if (req.path.startsWith('/auth') ||
+        req.path.startsWith('/places') ||
+        req.path.startsWith('/reviews') ||
+        req.path.startsWith('/comments') ||
+        req.path.startsWith('/likes')) {
+        return next(); 
+    }
+    // ไม่ใช่ API → ส่งหน้า SPA
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
