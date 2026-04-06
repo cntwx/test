@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มสถานที่ใหม่</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .page {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1)
+        }
+
+        .page h2 {
+            margin-bottom: 20px
+        }
+
+        .form-group {
+            margin-bottom: 15px
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px
+        }
+
+        textarea {
+            min-height: 120px
+        }
+
+        .preview {
+            margin-top: 10px
+        }
+
+        .preview img {
+            max-width: 100%;
+            border-radius: 10px
+        }
+
+        .btn-submit {
+            margin-top: 20px;
+            padding: 12px;
+            width: 100%;
+            background: #1A7A6E;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-logo" onclick="location.href='homepage.html'">
+            🌺 TRAVELWEB
+        </div>
+    </nav>
+
+    <div class="page">
+
+        <h2>➕ เพิ่มสถานที่ใหม่</h2>
+
+        <form id="placeForm">
+
+            <div class="form-group">
+                <label>ชื่อสถานที่</label>
+                <input type="text" id="name" required>
+            </div>
+
+            <div class="form-group">
+                <label>จังหวัด</label>
+                <input type="text" id="province" required>
+            </div>
+
+            <div class="form-group">
+                <label>หมวดหมู่</label>
+                <select id="category" onchange="checkOtherCategory()">
+                    <option value="วัด">วัด</option>
+                    <option value="ธรรมชาติ">ธรรมชาติ</option>
+                    <option value="ชายหาด">ชายหาด</option>
+                    <option value="เกาะ">เกาะ</option>
+                    <option value="น้ำตก">น้ำตก</option>
+                    <option value="อุทยาน">อุทยาน</option>
+                    <option value="วัฒนธรรม">วัฒนธรรม</option>
+                    <option value="ตลาด">ตลาด</option>
+                    <option value="พิพิธภัณฑ์">พิพิธภัณฑ์</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+
+                <!-- ช่องให้พิมพ์หมวดหมู่ใหม่ จะซ่อนโดย default -->
+                <input type="text" id="category-other" placeholder="พิมพ์หมวดหมู่ใหม่..."
+                    style="display:none;margin-top:6px;">
+            </div>
+
+            <div class="form-group">
+                <label>รายละเอียด</label>
+                <textarea id="description"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>URL รูปภาพ</label>
+                <input type="text" id="image" placeholder="https://example.com/image.jpg" oninput="previewImage()">
+                <div class="preview" id="preview"></div>
+            </div>
+
+            <button class="btn-submit">
+                เพิ่มสถานที่
+            </button>
+
+        </form>
+
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="api.js"></script>
+
+    <script>
+        // ฟังก์ชัน preview รูปภาพ
+        function previewImage() {
+            const url = document.getElementById("image").value;
+            if (!url) {
+                document.getElementById("preview").innerHTML = "";
+                return;
+            }
+            document.getElementById("preview").innerHTML =
+                `<img src="${url}" onerror="this.style.display='none'">`;
+        }
+
+        // ฟังก์ชันแสดง/ซ่อนช่องพิมพ์หมวดหมู่ใหม่
+        function checkOtherCategory() {
+            const cat = document.getElementById("category").value;
+            const other = document.getElementById("category-other");
+            other.style.display = (cat === "อื่นๆ") ? "block" : "none";
+        }
+
+        // ส่งฟอร์ม
+        document.getElementById("placeForm").onsubmit = async (e) => {
+            e.preventDefault();
+
+            // ตรวจสอบหมวดหมู่
+            const categorySelect = document.getElementById("category");
+            let category = categorySelect.value;
+            if (category === "อื่นๆ") {
+                const otherInput = document.getElementById("category-other").value.trim();
+                if (otherInput) category = otherInput;
+            }
+
+            try {
+                await apiFetch('/places', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: document.getElementById("name").value,
+                        province: document.getElementById("province").value,
+                        category: category, // ใช้ค่าที่ปรับแล้ว
+                        description: document.getElementById("description").value,
+                        image: document.getElementById("image").value
+                    })
+                });
+
+                showToast("เพิ่มสถานที่สำเร็จ");
+
+                setTimeout(() => {
+                    location.href = "homepage.html";
+                }, 1200);
+
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        };
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายละเอียดสถานที่ - TRAVELWEB</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .place-title-bar { background: var(--teal-dark); padding: 1.5rem 2rem; text-align: center; }
+  .place-title-bar h1 { font-family: 'Kanit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--gold-light); }
+
+  .place-detail-container { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+  .back-link { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--teal); font-size: 0.9rem; font-weight: 500; margin-bottom: 1rem; cursor: pointer; }
+  .back-link:hover { text-decoration: underline; }
+
+  /* GALLERY */
+  .place-gallery { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; height: 300px; border-radius: 14px; overflow: hidden; margin-bottom: 1.5rem; }
+  .gal-img { background: linear-gradient(135deg, #b2dfdb, #80cbc4); display: flex; align-items: center; justify-content: center; font-size: 3rem; overflow: hidden; position: relative; }
+  .gal-img img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+
+  /* INFO BOX */
+  .place-info-box { background: white; border-radius: 14px; padding: 1.75rem 2rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .place-info-box h2 { font-family: 'Kanit', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--border); }
+  .info-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.95rem; color: var(--mid); line-height: 1.6; }
+  .info-label { font-weight: 600; color: var(--dark); white-space: nowrap; min-width: 90px; }
+  .info-row a { color: var(--teal); text-decoration: underline; }
+  .place-desc-text { color: var(--mid); line-height: 1.8; font-size: 0.98rem; margin-bottom: 1rem; }
+  .place-stats { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+  .rating-big { font-family: 'Kanit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--gold); }
+  .stars-lg { font-size: 1.4rem; color: var(--gold); letter-spacing: -1px; }
+
+  /* WRITE REVIEW */
+  .write-review-box { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); }
+  .write-review-box h3 { font-family: 'Kanit', sans-serif; font-size: 1.1rem; color: var(--teal-dark); margin-bottom: 1.25rem; padding-bottom: 0.6rem; border-bottom: 2px solid var(--border); }
+  .star-picker { display: flex; gap: 0.35rem; margin-bottom: 1rem; cursor: pointer; }
+  .star-picker .sp { font-size: 2rem; color: #ddd; transition: color 0.1s; }
+  .star-picker .sp.active { color: var(--gold); }
+  .post-btn { background: var(--gold); color: var(--dark); font-family: 'Kanit', sans-serif; font-size: 1rem; font-weight: 600; padding: 0.65rem 2rem; border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s; }
+  .post-btn:hover { background: var(--gold-light); }
+  .login-prompt { background: #f0f9f7; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; color: var(--teal-dark); font-size: 0.95rem; border-left: 4px solid var(--teal); }
+  .login-prompt a { color: var(--teal); font-weight: 600; text-decoration: underline; }
+
+  /* REVIEWS */
+  .reviews-header { font-family: 'Kanit', sans-serif; font-size: 1.1rem; color: var(--teal-dark); margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 2px solid var(--border); }
+  .review-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .review-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.6rem; }
+  .reviewer { display: flex; align-items: center; gap: 0.75rem; }
+  .reviewer-av { width: 40px; height: 40px; border-radius: 50%; background: var(--teal-light); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1rem; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border); }
+  .reviewer-av img { width: 100%; height: 100%; object-fit: cover; }
+  .reviewer-name { font-weight: 600; font-size: 0.92rem; }
+  .reviewer-time { font-size: 0.78rem; color: var(--muted); }
+  .review-rating { color: var(--gold); font-size: 1rem; letter-spacing: -1px; }
+  .review-title { font-family: 'Kanit', sans-serif; font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; }
+  .review-content { font-size: 0.92rem; color: var(--mid); line-height: 1.65; }
+  .review-actions { display: flex; gap: 0.6rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center; }
+  .like-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 0.3rem 0.9rem; cursor: pointer; font-size: 0.85rem; font-family: 'Sarabun', sans-serif; transition: all 0.15s; }
+  .like-btn.liked { background: #fff0d0; border-color: var(--gold); color: #7a5500; font-weight: 600; }
+  .like-btn:hover:not(.liked) { border-color: var(--gold); background: #fff8e6; }
+  .share-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 0.3rem 0.9rem; cursor: pointer; font-size: 0.85rem; font-family: 'Sarabun', sans-serif; transition: all 0.15s; }
+  .share-btn:hover { background: var(--teal-light); border-color: var(--teal-light); color: white; }
+
+  /* COMMENTS */
+  .comments-section { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px dashed var(--border); }
+  .comment-item { display: flex; gap: 0.6rem; margin-bottom: 0.6rem; }
+  .comment-av { width: 30px; height: 30px; border-radius: 50%; background: var(--teal-light); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.78rem; font-weight: 600; flex-shrink: 0; overflow: hidden; }
+  .comment-av img { width: 100%; height: 100%; object-fit: cover; }
+  .comment-bubble { background: #f5f5f3; border-radius: 12px; padding: 0.5rem 0.9rem; font-size: 0.87rem; flex: 1; line-height: 1.5; }
+  .comment-bubble .cb-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; flex-wrap: wrap; }
+  .comment-bubble strong { font-size: 0.82rem; color: var(--teal-dark); }
+  .comment-time { color: var(--muted); font-size: 0.75rem; }
+  .del-comment-btn { margin-left: auto; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.8rem; padding: 0 0.3rem; }
+  .del-comment-btn:hover { text-decoration: underline; }
+  .comment-input-row { display: flex; gap: 0.5rem; margin-top: 0.6rem; align-items: center; }
+  .comment-input-row input { flex: 1; padding: 0.5rem 1rem; border: 1.5px solid var(--border); border-radius: 20px; font-family: 'Sarabun', sans-serif; font-size: 0.88rem; background: white; }
+  .comment-input-row input:focus { outline: none; border-color: var(--teal); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'">🌺 <span>TRAVEL</span>WEB</div>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div class="place-title-bar">
+  <h1 id="place-title">⏳ กำลังโหลด...</h1>
+</div>
+
+<div class="place-detail-container">
+  <a class="back-link" onclick="history.back()">← กลับ</a>
+
+  <div class="place-gallery" id="place-gallery">
+    <div class="gal-img">🏞️</div>
+    <div class="gal-img">🏞️</div>
+    <div class="gal-img">🏞️</div>
+  </div>
+
+  <div class="place-info-box" id="place-info">
+    <div class="loading">⏳ กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div id="write-review-section"></div>
+  <div id="reviews-section"><div class="loading">⏳ กำลังโหลดรีวิว...</div></div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="api.js"></script>
+<script>
+const placeId = new URLSearchParams(location.search).get('id');
+if (!placeId) location.href = 'homepage.html';
+let pickedRating = 5;
+
+async function loadPlace() {
+  try {
+    const p = await apiFetch(`/places/${placeId}`);
+    document.title = `${p.name} - TRAVELWEB`;
+    document.getElementById('place-title').textContent = p.name;
+
+    if (p.image) {
+      document.getElementById('place-gallery').innerHTML = [p.image, p.image, p.image]
+        .map(img => `<div class="gal-img"><img src="${img}" alt="${p.name}" onerror="this.style.display='none'"></div>`).join('');
+    }
+
+    const avg = p.avg_rating;
+    document.getElementById('place-info').innerHTML = `
+      <h2>${p.name}</h2>
+      <p class="place-desc-text">${p.description}</p>
+      <div class="info-row"><span class="info-label">📍 จังหวัด :</span><span>${p.province}</span></div>
+      <div class="info-row"><span class="info-label">🏷️ หมวดหมู่ :</span><span>${p.category}</span></div>
+      <div class="place-stats">
+        <span class="rating-big">${avg || '-'}</span>
+        <span class="stars-lg">${avg ? renderStars(parseFloat(avg)) : '☆☆☆☆☆'}</span>
+        <span style="color:var(--muted);font-size:0.9rem">(${p.review_count} รีวิว)</span>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('place-info').innerHTML = '<p style="color:var(--danger)">❌ ไม่พบสถานที่</p>';
+  }
+}
+
+function renderWriteReview() {
+  const user = getCurrentUser();
+  const sec = document.getElementById('write-review-section');
+  if (!user) {
+    sec.innerHTML = `<div class="login-prompt">🔑 <a href="login.html?redirect=place.html%3Fid%3D${placeId}">เข้าสู่ระบบ</a> เพื่อเขียนรีวิวและให้คะแนนสถานที่นี้</div>`;
+    return;
+  }
+  sec.innerHTML = `
+    <div class="write-review-box">
+      <h3>✍️ เขียนรีวิวสถานที่นี้</h3>
+      <div class="form-group"><label>หัวข้อรีวิว</label><input type="text" id="rv-title" placeholder="สรุปประสบการณ์ของคุณ..."></div>
+      <div class="form-group">
+        <label>ให้คะแนน</label>
+        <div class="star-picker" id="star-picker">${[1,2,3,4,5].map(i=>`<span class="sp ${i<=pickedRating?'active':''}" onclick="pickStar(${i})">★</span>`).join('')}</div>
+      </div>
+      <div class="form-group"><label>รีวิว</label><textarea id="rv-content" placeholder="เล่าประสบการณ์การเที่ยวของคุณ..." style="min-height:110px"></textarea></div>
+      <button class="post-btn" onclick="submitReview()">📝 โพสรีวิว</button>
+    </div>`;
+}
+
+async function loadReviews() {
+  try {
+    const reviews = await apiFetch(`/reviews/place/${placeId}`);
+    const user = getCurrentUser();
+    const sec = document.getElementById('reviews-section');
+    sec.innerHTML = `
+      <div class="reviews-header">💬 รีวิวทั้งหมด (${reviews.length})</div>
+      ${reviews.length
+        ? `<div id="reviews-list">${reviews.map(r => renderReviewCard(r, user)).join('')}</div>`
+        : `<div style="text-align:center;padding:2.5rem;color:var(--muted);background:white;border-radius:12px;border:1px solid var(--border)"><div style="font-size:2.5rem;margin-bottom:0.5rem">💭</div>ยังไม่มีรีวิว เป็นคนแรกที่รีวิวสถานที่นี้!</div>`}`;
+    reviews.forEach(r => { loadComments(r.id); if (user) checkLike(r.id); });
+  } catch(e) {}
+}
+
+function renderReviewCard(r, user) {
+  const canDelete = user && (user.id === r.user_id || user.role === 'admin');
+  const avHtml = r.avatar ? `<div class="reviewer-av"><img src="${r.avatar}"></div>` : `<div class="reviewer-av">${(r.fname||'?')[0]}</div>`;
+  return `
+    <div class="review-card" id="review-${r.id}">
+      <div class="review-top">
+        <div class="reviewer">
+          ${avHtml}
+          <div><div class="reviewer-name">${r.fname} ${r.lname}</div><div class="reviewer-time">${timeAgo(r.created_at)}</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <span class="review-rating">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+          ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="deleteReview(${r.id})">ลบ</button>` : ''}
+        </div>
+      </div>
+      <div class="review-title">${r.title}</div>
+      <div class="review-content">${r.content}</div>
+      <div class="review-actions">
+        <button class="like-btn" id="like-btn-${r.id}" onclick="toggleLike(${r.id})">❤️ <span id="like-count-${r.id}">${r.like_count}</span></button>
+        <button class="share-btn" onclick="shareReview(${r.id})">🔗 แชร์</button>
+      </div>
+      <div class="comments-section">
+        <div id="comments-${r.id}"></div>
+        ${user ? `<div class="comment-input-row">
+          ${user.avatar ? `<div class="comment-av"><img src="${user.avatar}"></div>` : `<div class="comment-av">${user.fname[0]}</div>`}
+          <input type="text" id="ci-${r.id}" placeholder="เขียนคอมเม้น..." onkeydown="if(event.key==='Enter')submitComment(${r.id})">
+          <button class="btn btn-teal btn-sm" onclick="submitComment(${r.id})">ส่ง</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
+function pickStar(n) { pickedRating = n; document.querySelectorAll('#star-picker .sp').forEach((el,i)=>el.classList.toggle('active',i<n)); }
+
+async function submitReview() {
+  const title = document.getElementById('rv-title')?.value.trim();
+  const content = document.getElementById('rv-content')?.value.trim();
+  if (!title||!content) { showToast('กรุณากรอกข้อมูลให้ครบ','error'); return; }
+  try {
+    await apiFetch('/reviews',{method:'POST',body:JSON.stringify({place_id:placeId,title,content,rating:pickedRating})});
+    showToast('โพสรีวิวสำเร็จ! 🎉'); loadPlace(); loadReviews();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deleteReview(id) {
+  if (!confirm('ต้องการลบรีวิวนี้?')) return;
+  try { await apiFetch(`/reviews/${id}`,{method:'DELETE'}); showToast('ลบสำเร็จ'); loadReviews(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+async function checkLike(reviewId) {
+  try { const d=await apiFetch(`/likes/${reviewId}/check`); if(d.liked) document.getElementById(`like-btn-${reviewId}`)?.classList.add('liked'); } catch(e){}
+}
+
+async function toggleLike(reviewId) {
+  if (!isLoggedIn()) { location.href=`login.html?redirect=place.html%3Fid%3D${placeId}`; return; }
+  try {
+    const d=await apiFetch(`/likes/${reviewId}`,{method:'POST'});
+    const btn=document.getElementById(`like-btn-${reviewId}`); const c=document.getElementById(`like-count-${reviewId}`);
+    if(d.liked){btn.classList.add('liked');c.textContent=parseInt(c.textContent)+1;}
+    else{btn.classList.remove('liked');c.textContent=parseInt(c.textContent)-1;}
+  } catch(e){ showToast(e.message,'error'); }
+}
+
+async function loadComments(reviewId) {
+  try {
+    const comments=await apiFetch(`/comments/review/${reviewId}`);
+    const user=getCurrentUser(); const el=document.getElementById(`comments-${reviewId}`); if(!el)return;
+    el.innerHTML=comments.map(c=>{
+      const canDel=user&&(user.id===c.user_id||user.role==='admin');
+      const av=c.avatar?`<div class="comment-av"><img src="${c.avatar}"></div>`:`<div class="comment-av">${(c.fname||'?')[0]}</div>`;
+      return `<div class="comment-item">${av}<div class="comment-bubble">
+        <div class="cb-head"><strong>${c.fname} ${c.lname}</strong><span class="comment-time">${timeAgo(c.created_at)}</span>
+        ${canDel?`<button class="del-comment-btn" onclick="deleteComment(${c.id},${reviewId})">✕ ลบ</button>`:''}</div>
+        <div>${c.content}</div></div></div>`;
+    }).join('');
+  } catch(e){}
+}
+
+async function submitComment(reviewId) {
+  const input=document.getElementById(`ci-${reviewId}`); const content=input?.value.trim(); if(!content)return;
+  try { await apiFetch('/comments',{method:'POST',body:JSON.stringify({review_id:reviewId,content})}); input.value=''; loadComments(reviewId); }
+  catch(e){ showToast(e.message,'error'); }
+}
+
+async function deleteComment(id,reviewId) {
+  if(!confirm('ต้องการลบคอมเม้นนี้?'))return;
+  try { await apiFetch(`/comments/${id}`,{method:'DELETE'}); showToast('ลบคอมเม้นสำเร็จ'); loadComments(reviewId); }
+  catch(e){ showToast(e.message,'error'); }
+}
+
+function shareReview(id) {
+  navigator.clipboard?.writeText(`${location.origin}/place.html?id=${placeId}#review-${id}`).then(()=>showToast('คัดลอกลิงก์แล้ว!'));
+}
+
+updateNav(); loadPlace(); renderWriteReview(); loadReviews();
+</script>
+</body>
+</html>

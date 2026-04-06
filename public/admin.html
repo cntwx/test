@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - TRAVELWEB</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .admin-top { background: #1a1a2e; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .admin-top h1 { font-family: 'Kanit', sans-serif; color: var(--gold-light); font-size: 1.3rem; }
+  .admin-content { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .admin-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.5rem 1.2rem; border-radius: 8px; border: 1.5px solid var(--border); background: white; font-family: 'Sarabun', sans-serif; cursor: pointer; font-size: 0.9rem; transition: all 0.15s; }
+  .tab-btn.active { background: var(--teal-dark); color: white; border-color: var(--teal-dark); }
+  .admin-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .admin-table th { background: var(--teal-dark); color: white; padding: 0.75rem 1rem; text-align: left; font-family: 'Kanit', sans-serif; font-size: 0.9rem; font-weight: 500; }
+  .admin-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+  .admin-table tr:last-child td { border-bottom: none; }
+  .admin-table tr:hover td { background: #f9f7f4; }
+  td img.thumb { width: 52px; height: 38px; object-fit: cover; border-radius: 6px; }
+
+  /* PLACE MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: white; border-radius: 16px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: var(--shadow-lg); animation: modalIn 0.2s ease; }
+  @keyframes modalIn { from{transform:translateY(20px) scale(0.97);opacity:0}to{transform:none;opacity:1} }
+  .modal h2 { font-family: 'Kanit', sans-serif; font-size: 1.3rem; color: var(--teal-dark); margin-bottom: 1.25rem; }
+  .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+</style>
+</head>
+<body>
+
+<div class="admin-top">
+  <h1>👩🏻‍💻 Admin Panel — TRAVELWEB</h1>
+  <div style="display:flex;gap:0.75rem;align-items:center">
+    <span style="color:rgba(255,255,255,0.7);font-size:0.88rem" id="admin-name"></span>
+    <a href="homepage.html" class="btn btn-outline btn-sm">ดูเว็บ</a>
+    <button class="btn btn-danger btn-sm" onclick="doLogout()">ออกจากระบบ</button>
+  </div>
+</div>
+
+<div class="admin-content">
+  <div class="admin-tabs">
+    <button class="tab-btn active" onclick="switchTab('places',this)">🏝️ สถานที่ (${count})</button>
+    <button class="tab-btn" onclick="switchTab('reviews',this)">💬 รีวิว</button>
+    <button class="tab-btn" onclick="switchTab('comments',this)">📝 คอมเม้น</button>
+  </div>
+  <div id="tab-places"></div>
+  <div id="tab-reviews" style="display:none"></div>
+  <div id="tab-comments" style="display:none"></div>
+</div>
+
+<!-- PLACE MODAL -->
+<div class="modal-overlay" id="place-modal">
+  <div class="modal">
+    <h2 id="modal-title">➕ เพิ่มสถานที่</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group"><label>ชื่อสถานที่</label><input type="text" id="m-name"></div>
+    <div class="form-group"><label>จังหวัด</label><input type="text" id="m-province"></div>
+    <div class="form-group"><label>หมวดหมู่</label>
+      <select id="m-category">
+        <option>วัด</option><option>ธรรมชาติ</option><option>ชายหาด</option>
+        <option>เกาะ</option><option>น้ำตก</option><option>อุทยาน</option>
+        <option>วัฒนธรรม</option><option>ตลาด</option><option>พิพิธภัณฑ์</option>
+      </select>
+    </div>
+    <div class="form-group"><label>คำอธิบาย</label><textarea id="m-desc"></textarea></div>
+    <div class="form-group"><label>URL รูปภาพ</label><input type="text" id="m-image" placeholder="https://..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-gold" onclick="savePlace()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="api.js"></script>
+<script>
+const user = getCurrentUser();
+if (!user || user.role !== 'admin') { alert('ไม่มีสิทธิ์เข้าถึงหน้านี้'); location.href = 'homepage.html'; }
+document.getElementById('admin-name').textContent = `${user.fname} ${user.lname}`;
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['places','reviews','comments'].forEach(t => document.getElementById(`tab-${t}`).style.display = t===tab?'':'none');
+  if (tab==='places') loadPlaces();
+  else if (tab==='reviews') loadReviews();
+  else loadComments();
+}
+
+// ===== PLACES =====
+async function loadPlaces() {
+  try {
+    const places = await apiFetch('/places');
+    document.getElementById('tab-places').innerHTML = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+        <button class="btn btn-gold" onclick="openAdd()">➕ เพิ่มสถานที่ใหม่</button>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>รูป</th><th>ชื่อสถานที่</th><th>หมวดหมู่</th><th>จังหวัด</th><th>รีวิว</th><th>คะแนน</th><th>จัดการ</th></tr></thead>
+        <tbody>
+          ${places.map(p=>`<tr>
+            <td>${p.image?`<img class="thumb" src="${p.image}" onerror="this.style.display='none'">`:'—'}</td>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.category}</td>
+            <td>${p.province}</td>
+            <td>${p.review_count}</td>
+            <td>${p.avg_rating?`⭐ ${p.avg_rating}`:'—'}</td>
+            <td style="display:flex;gap:0.4rem">
+              <button class="btn btn-teal btn-sm" onclick="openEdit(${p.id})">แก้ไข</button>
+              <button class="btn btn-danger btn-sm" onclick="deletePlace(${p.id},'${p.name.replace(/'/g,"\\'")}')">ลบ</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+function openAdd() {
+  document.getElementById('modal-title').textContent = '➕ เพิ่มสถานที่ใหม่';
+  document.getElementById('edit-id').value = '';
+  ['m-name','m-province','m-desc','m-image'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-category').value = 'วัด';
+  document.getElementById('place-modal').classList.add('active');
+}
+
+async function openEdit(id) {
+  try {
+    const p = await apiFetch(`/places/${id}`);
+    document.getElementById('modal-title').textContent = '✏️ แก้ไขสถานที่';
+    document.getElementById('edit-id').value = id;
+    document.getElementById('m-name').value = p.name;
+    document.getElementById('m-province').value = p.province;
+    document.getElementById('m-category').value = p.category;
+    document.getElementById('m-desc').value = p.description;
+    document.getElementById('m-image').value = p.image||'';
+    document.getElementById('place-modal').classList.add('active');
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function savePlace() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    name: document.getElementById('m-name').value.trim(),
+    province: document.getElementById('m-province').value.trim(),
+    category: document.getElementById('m-category').value,
+    description: document.getElementById('m-desc').value.trim(),
+    image: document.getElementById('m-image').value.trim(),
+  };
+  if (!body.name||!body.province||!body.description) { showToast('กรุณากรอกข้อมูลให้ครบ','error'); return; }
+  try {
+    if (id) await apiFetch(`/places/${id}`,{method:'PUT',body:JSON.stringify(body)});
+    else await apiFetch('/places',{method:'POST',body:JSON.stringify(body)});
+    showToast('บันทึกสำเร็จ'); closeModal(); loadPlaces();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deletePlace(id, name) {
+  if (!confirm(`ต้องการลบ "${name}"?\nรีวิวทั้งหมดจะถูกลบด้วย`)) return;
+  try { await apiFetch(`/places/${id}`,{method:'DELETE'}); showToast('ลบสำเร็จ'); loadPlaces(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+function closeModal() { document.getElementById('place-modal').classList.remove('active'); }
+
+// ===== REVIEWS =====
+async function loadReviews() {
+  try {
+    const reviews = await apiFetch('/reviews');
+    document.getElementById('tab-reviews').innerHTML = `
+      <table class="admin-table">
+        <thead><tr><th>ผู้รีวิว</th><th>สถานที่</th><th>หัวข้อ</th><th>คะแนน</th><th>วันที่</th><th>จัดการ</th></tr></thead>
+        <tbody>
+          ${reviews.map(r=>`<tr>
+            <td>${r.fname} ${r.lname}</td>
+            <td>${r.place_name}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title}</td>
+            <td>${'⭐'.repeat(r.rating)}</td>
+            <td>${new Date(r.created_at).toLocaleDateString('th-TH')}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteReview(${r.id})">ลบ</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deleteReview(id) {
+  if (!confirm('ต้องการลบรีวิวนี้?')) return;
+  try { await apiFetch(`/reviews/${id}`,{method:'DELETE'}); showToast('ลบสำเร็จ'); loadReviews(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+// ===== COMMENTS =====
+async function loadComments() {
+  try {
+    const reviews = await apiFetch('/reviews');
+    let all = [];
+    for (const r of reviews.slice(0,100)) {
+      const comments = await apiFetch(`/comments/review/${r.id}`);
+      all = all.concat(comments.map(c => ({...c, review_title: r.title, place_name: r.place_name})));
+    }
+    document.getElementById('tab-comments').innerHTML = all.length ? `
+      <table class="admin-table">
+        <thead><tr><th>ผู้คอมเม้น</th><th>สถานที่</th><th>ในรีวิว</th><th>คอมเม้น</th><th>วันที่</th><th>จัดการ</th></tr></thead>
+        <tbody>
+          ${all.map(c=>`<tr>
+            <td>${c.fname} ${c.lname}</td>
+            <td style="white-space:nowrap">${c.place_name||'—'}</td>
+            <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.review_title||''}</td>
+            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.content}</td>
+            <td style="white-space:nowrap">${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteComment(${c.id})">ลบ</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="no-data">ยังไม่มีคอมเม้น</div>';
+  } catch(e) {}
+}
+
+async function deleteComment(id) {
+  if (!confirm('ต้องการลบคอมเม้นนี้?')) return;
+  try { await apiFetch(`/comments/${id}`,{method:'DELETE'}); showToast('ลบสำเร็จ'); loadComments(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+loadPlaces();
+</script>
+</body>
+</html>

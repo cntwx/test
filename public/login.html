@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าสู่ระบบ - TRAVELWEB</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'">🌺 <span>TRAVEL</span>WEB</div>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div class="auth-wrap">
+
+  <!-- LOGIN CARD -->
+  <div class="auth-card" id="login-card">
+    <h2>🔑 เข้าสู่ระบบ</h2>
+    <div class="form-group">
+      <label>อีเมล</label>
+      <input type="email" id="login-email" placeholder="example@email.com">
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="login-password" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="error-msg" id="login-error"></div>
+    <button class="btn btn-teal btn-block" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="auth-switch">ยังไม่มีบัญชี? <a onclick="switchCard('register')">สมัครสมาชิก</a></div>
+  </div>
+
+  <!-- REGISTER CARD -->
+  <div class="auth-card" id="register-card" style="display:none">
+    <h2>✨ สมัครสมาชิก</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+      <div class="form-group"><label>ชื่อ</label><input type="text" id="reg-fname" placeholder="ชื่อ"></div>
+      <div class="form-group"><label>นามสกุล</label><input type="text" id="reg-lname" placeholder="นามสกุล"></div>
+    </div>
+    <div class="form-group">
+      <label>อีเมล</label>
+      <input type="email" id="reg-email" placeholder="example@email.com">
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="reg-password" placeholder="อย่างน้อย 6 ตัวอักษร">
+    </div>
+    <div class="error-msg" id="reg-error"></div>
+    <button class="btn btn-gold btn-block" onclick="doRegister()">สมัครสมาชิก</button>
+    <div class="auth-switch">มีบัญชีแล้ว? <a onclick="switchCard('login')">เข้าสู่ระบบ</a></div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script>
+// ถ้า login แล้วให้กลับหน้าหลักเลย
+if (isLoggedIn()) location.href = 'homepage.html';
+
+updateNav();
+
+function switchCard(type) {
+  document.getElementById('login-card').style.display = type === 'login' ? '' : 'none';
+  document.getElementById('register-card').style.display = type === 'register' ? '' : 'none';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  document.getElementById('login-error').textContent = '';
+  if (!username || !password) { document.getElementById('login-error').textContent = 'กรุณากรอกข้อมูลให้ครบ'; return; }
+  try {
+    const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    // กลับหน้าที่มาก่อนหน้า หรือหน้าหลัก
+    const redirect = new URLSearchParams(location.search).get('redirect') || 'homepage.html';
+    location.href = redirect;
+  } catch(e) {
+    document.getElementById('login-error').textContent = e.message;
+  }
+}
+
+async function doRegister() {
+  const fname = document.getElementById('reg-fname').value.trim();
+  const lname = document.getElementById('reg-lname').value.trim();
+  const username = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  document.getElementById('reg-error').textContent = '';
+  if (!fname || !lname || !username || !password) { document.getElementById('reg-error').textContent = 'กรุณากรอกข้อมูลให้ครบ'; return; }
+  if (password.length < 6) { document.getElementById('reg-error').textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'; return; }
+  try {
+    await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ fname, lname, username, password }) });
+    showToast('สมัครสมาชิกสำเร็จ!');
+    document.getElementById('login-email').value = username;
+    switchCard('login');
+  } catch(e) {
+    document.getElementById('reg-error').textContent = e.message;
+  }
+}
+</script>
+</body>
+</html>

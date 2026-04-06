@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRAVELWEB - รีวิวสถานที่ท่องเที่ยวไทย</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'">🌺 <span>TRAVEL</span>WEB</div>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div class="hero">
+  <h1>ค้นพบ<span>สถานที่สวยงาม</span>ทั่วไทย</h1>
+  <p>รีวิวจริง จากนักท่องเที่ยวจริง</p>
+
+  <div class="search-bar">
+    <input type="text" id="search-input"
+      placeholder="ค้นหาสถานที่... เช่น วัดพระแก้ว, เกาะพีพี"
+      oninput="loadPlaces()">
+
+    <button onclick="loadPlaces()">🔍 ค้นหา</button>
+  </div>
+
+  <div style="margin-top:15px">
+    <a href="create-place.html" class="btn btn-gold">
+      ➕ เพิ่มสถานที่ใหม่
+    </a>
+  </div>
+
+</div>
+
+<div class="categories" id="category-bar"></div>
+
+<div class="main-content">
+  <div class="section-header">
+    <div class="section-title" id="places-heading">สถานที่ท่องเที่ยวทั้งหมด</div>
+  </div>
+  <div class="places-grid" id="places-grid">
+    <div class="loading">⏳ กำลังโหลด...</div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script>
+const CATS = ['ทั้งหมด','วัด','ธรรมชาติ','ชายหาด','เกาะ','น้ำตก','อุทยาน','วัฒนธรรม','ตลาด','พิพิธภัณฑ์'];
+let selectedCategory = 'ทั้งหมด';
+
+function renderCategoryBar() {
+  document.getElementById('category-bar').innerHTML = CATS.map(c =>
+    `<button class="cat-btn ${c===selectedCategory?'active':''}" onclick="selectCategory('${c}')">${c}</button>`
+  ).join('');
+}
+
+function selectCategory(cat) {
+  selectedCategory = cat;
+  renderCategoryBar();
+  loadPlaces();
+}
+
+async function loadPlaces() {
+  const q = document.getElementById('search-input')?.value || '';
+  let url = '/places?';
+  if (q) url += `search=${encodeURIComponent(q)}&`;
+  if (selectedCategory !== 'ทั้งหมด') url += `category=${encodeURIComponent(selectedCategory)}`;
+  const grid = document.getElementById('places-grid');
+  try {
+    const places = await apiFetch(url);
+    document.getElementById('places-heading').textContent =
+      `${selectedCategory !== 'ทั้งหมด' ? 'หมวด: ' + selectedCategory : 'สถานที่ท่องเที่ยวทั้งหมด'} (${places.length})`;
+    if (!places.length) {
+      grid.innerHTML = '<div class="no-data" style="grid-column:1/-1">🔍 ไม่พบสถานที่ที่ค้นหา</div>';
+      return;
+    }
+    grid.innerHTML = places.map(p => {
+      const avg = p.avg_rating || null;
+      const stars = avg ? renderStars(parseFloat(avg)) : '☆☆☆☆☆';
+      return `
+        <div class="place-card" onclick="location.href='place.html?id=${p.id}'">
+          <div class="place-img">
+            ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : '🏞️'}
+            <span class="place-cat-badge">${p.category}</span>
+          </div>
+          <div class="place-body">
+            <div class="place-name">${p.name}</div>
+            <div class="place-loc">📍 ${p.province}</div>
+            <div class="place-meta">
+              <span class="stars">${stars}</span>
+              <span style="font-size:0.82rem;color:var(--muted)">${avg || '-'} (${p.review_count} รีวิว)</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = '<div class="no-data" style="grid-column:1/-1">❌ ไม่สามารถโหลดข้อมูลได้</div>';
+  }
+}
+
+updateNav();
+renderCategoryBar();
+loadPlaces();
+</script>
+</body>
+</html>
