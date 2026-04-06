@@ -8,18 +8,18 @@ require('dotenv').config();
 
 const app = express();
 
-// ===== CORS ต้องมาก่อนสุด =====
+// ===== CORS =====
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
 // ===== DATABASE =====
 const connection = mysql.createConnection(process.env.DATABASE_URL);
-connection.connect((err) => {
+connection.connect(err => {
     if (err) console.error('❌ DB connection failed:', err.message);
     else console.log('✅ DB connected');
 });
 
-// ===== JWT SECRET =====
+// ===== JWT =====
 const JWT_SECRET = process.env.JWT_SECRET || 'thailand_review_secret_2024';
 
 // ===== AUTH MIDDLEWARE =====
@@ -138,44 +138,64 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
+// เพิ่มสถานที่ → ให้ทุก user เพิ่มได้
 app.post('/places', authMiddleware, (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
     const { name, province, category, description, image } = req.body;
-    connection.query(
-        'INSERT INTO places (name, province, category, description, image) VALUES (?, ?, ?, ?, ?)',
-        [name, province, category, description, image],
-        (err, result) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.status(201).json({ message: 'เพิ่มสถานที่สำเร็จ', id: result.insertId });
-        }
-    );
-});
+    if (!name || !province || !category || !description)
+        return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
-app.put('/places/:id', authMiddleware, (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
-    const { name, province, category, description, image } = req.body;
-    connection.query(
-        'UPDATE places SET name=?, province=?, category=?, description=?, image=? WHERE id=?',
-        [name, province, category, description, image, req.params.id],
-        (err) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.json({ message: 'แก้ไขสำเร็จ' });
-        }
-    );
-});
-
-app.delete('/places/:id', authMiddleware, (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
-    connection.query('DELETE FROM places WHERE id = ?', [req.params.id], (err) => {
+    const sql = `
+        INSERT INTO places (name, province, category, description, image, createdBy)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    connection.query(sql, [name, province, category, description, image || '', req.user.id], (err, result) => {
         if (err) return res.status(500).json({ message: err.message });
-        res.json({ message: 'ลบสำเร็จ' });
+        res.status(201).json({ message: 'เพิ่มสถานที่สำเร็จ', id: result.insertId });
+    });
+});
+
+// แก้ไขสถานที่ → เฉพาะ creator หรือ admin
+app.put('/places/:id', authMiddleware, (req, res) => {
+    const { name, province, category, description, image } = req.body;
+
+    connection.query('SELECT createdBy FROM places WHERE id = ?', [req.params.id], (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (!rows[0]) return res.status(404).json({ message: 'ไม่พบสถานที่' });
+
+        if (req.user.role !== 'admin' && rows[0].createdBy !== req.user.id)
+            return res.status(403).json({ message: 'ไม่มีสิทธิ์แก้ไขสถานที่นี้' });
+
+        connection.query(
+            'UPDATE places SET name=?, province=?, category=?, description=?, image=? WHERE id=?',
+            [name, province, category, description, image || '', req.params.id],
+            (err) => {
+                if (err) return res.status(500).json({ message: err.message });
+                res.json({ message: 'แก้ไขสำเร็จ' });
+            }
+        );
+    });
+});
+
+// ลบสถานที่ → เฉพาะ creator หรือ admin
+app.delete('/places/:id', authMiddleware, (req, res) => {
+    connection.query('SELECT createdBy FROM places WHERE id = ?', [req.params.id], (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (!rows[0]) return res.status(404).json({ message: 'ไม่พบสถานที่' });
+
+        if (req.user.role !== 'admin' && rows[0].createdBy !== req.user.id)
+            return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบสถานที่นี้' });
+
+        connection.query('DELETE FROM places WHERE id = ?', [req.params.id], (err) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json({ message: 'ลบสำเร็จ' });
+        });
     });
 });
 
 /* =========================
    REVIEWS
-   ⚠️ /reviews/place/:placeId ต้องมาก่อน /reviews/:id
 ========================= */
+// เหมือนเดิม
 app.get('/reviews/place/:placeId', (req, res) => {
     connection.query(
         `SELECT r.*, u.fname, u.lname, u.avatar,
