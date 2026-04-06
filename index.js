@@ -75,10 +75,14 @@ app.get('/places', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // fallback SPA - อย่าให้ override API
-app.get('/*', (req, res) => {
-    if (req.path.startsWith('/auth') || req.path.startsWith('/places') || req.path.startsWith('/reviews') || req.path.startsWith('/comments') || req.path.startsWith('/likes')) {
+app.get('/:catchAll(.*)', (req, res) => {
+    // skip API routes
+    if (req.path.startsWith('/auth') || req.path.startsWith('/places') ||
+        req.path.startsWith('/reviews') || req.path.startsWith('/comments') ||
+        req.path.startsWith('/likes')) {
         return res.status(404).json({ message: 'API not found' });
     }
+
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
