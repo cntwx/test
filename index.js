@@ -8,7 +8,6 @@ require('dotenv').config();
 
 const app = express();
 
-// ===== CORS ต้องมาก่อนสุด =====
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
@@ -19,10 +18,8 @@ connection.connect(err => {
     else console.log('✅ DB connected');
 });
 
-// ===== JWT =====
 const JWT_SECRET = process.env.JWT_SECRET || 'thailand_review_secret_2024';
 
-// ===== AUTH MIDDLEWARE =====
 function authMiddleware(req, res, next) {
     const token = req.headers['authorization']?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'กรุณาเข้าสู่ระบบก่อน' });
@@ -34,9 +31,7 @@ function authMiddleware(req, res, next) {
     }
 }
 
-/* =========================
-   AUTH
-========================= */
+/* ========================= AUTH ========================= */
 app.post('/auth/register', async (req, res) => {
     const { fname, lname, username, password } = req.body;
     if (!fname || !lname || !username || !password)
@@ -91,13 +86,11 @@ app.get('/auth/me', authMiddleware, (req, res) => {
     });
 });
 
-/* =========================
-   PLACES
-========================= */
+/* ========================= PLACES ========================= */
 app.get('/places', (req, res) => {
     const { search, category } = req.query;
     let query = `
-        SELECT p.*,
+        SELECT p.id, p.name, p.province, p.category, p.description, p.image, p.created_by,
             ROUND(AVG(r.rating), 1) as avg_rating,
             COUNT(DISTINCT r.id) as review_count
         FROM places p
@@ -113,7 +106,8 @@ app.get('/places', (req, res) => {
         query += ' AND p.category = ?';
         params.push(category);
     }
-    query += ' GROUP BY p.id ORDER BY p.id DESC';
+    query += ' GROUP BY p.id, p.name, p.province, p.category, p.description, p.image, p.created_by ORDER BY p.id DESC';
+
     connection.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ message: err.message });
         res.json(results);
@@ -122,13 +116,13 @@ app.get('/places', (req, res) => {
 
 app.get('/places/:id', (req, res) => {
     connection.query(
-        `SELECT p.*,
+        `SELECT p.id, p.name, p.province, p.category, p.description, p.image, p.created_by,
             ROUND(AVG(r.rating), 1) as avg_rating,
             COUNT(DISTINCT r.id) as review_count
         FROM places p
         LEFT JOIN reviews r ON r.place_id = p.id
         WHERE p.id = ?
-        GROUP BY p.id`,
+        GROUP BY p.id, p.name, p.province, p.category, p.description, p.image, p.created_by`,
         [req.params.id],
         (err, results) => {
             if (err) return res.status(500).json({ message: err.message });
@@ -138,7 +132,6 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
-// เพิ่มสถานที่ → user login ได้เลย
 app.post('/places', authMiddleware, (req, res) => {
     const { name, province, category, description, image } = req.body;
     if (!name || !province || !category || !description)
@@ -154,7 +147,6 @@ app.post('/places', authMiddleware, (req, res) => {
     );
 });
 
-// แก้ไข → เฉพาะเจ้าของ หรือ admin
 app.put('/places/:id', authMiddleware, (req, res) => {
     const { name, province, category, description, image } = req.body;
     connection.query('SELECT created_by FROM places WHERE id = ?', [req.params.id], (err, rows) => {
@@ -174,7 +166,6 @@ app.put('/places/:id', authMiddleware, (req, res) => {
     });
 });
 
-// ลบ → เฉพาะเจ้าของ หรือ admin
 app.delete('/places/:id', authMiddleware, (req, res) => {
     connection.query('SELECT created_by FROM places WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
@@ -189,19 +180,20 @@ app.delete('/places/:id', authMiddleware, (req, res) => {
     });
 });
 
-/* =========================
-   REVIEWS
-   ⚠️ /reviews/place/:placeId ต้องมาก่อน /reviews และ /reviews/:id
-========================= */
+/* ========================= REVIEWS ========================= */
+// ⚠️ /reviews/place/:placeId ต้องมาก่อน /reviews
 app.get('/reviews/place/:placeId', (req, res) => {
     connection.query(
-        `SELECT r.*, u.fname, u.lname, u.avatar,
+        `SELECT
+            r.id, r.place_id, r.user_id, r.title, r.content, r.rating, r.created_at,
+            u.fname, u.lname, u.avatar,
             COUNT(DISTINCT l.id) as like_count
         FROM reviews r
         JOIN users u ON u.id = r.user_id
         LEFT JOIN likes l ON l.review_id = r.id
         WHERE r.place_id = ?
-        GROUP BY r.id
+        GROUP BY r.id, r.place_id, r.user_id, r.title, r.content, r.rating, r.created_at,
+                 u.fname, u.lname, u.avatar
         ORDER BY r.created_at DESC`,
         [req.params.placeId],
         (err, rows) => {
@@ -214,7 +206,8 @@ app.get('/reviews/place/:placeId', (req, res) => {
 app.get('/reviews', authMiddleware, (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
     connection.query(
-        `SELECT r.*, u.fname, u.lname, p.name as place_name
+        `SELECT r.id, r.place_id, r.user_id, r.title, r.content, r.rating, r.created_at,
+            u.fname, u.lname, p.name as place_name
         FROM reviews r
         JOIN users u ON u.id = r.user_id
         JOIN places p ON p.id = r.place_id
@@ -254,12 +247,11 @@ app.delete('/reviews/:id', authMiddleware, (req, res) => {
     });
 });
 
-/* =========================
-   COMMENTS
-========================= */
+/* ========================= COMMENTS ========================= */
 app.get('/comments/review/:reviewId', (req, res) => {
     connection.query(
-        `SELECT c.*, u.fname, u.lname, u.avatar
+        `SELECT c.id, c.review_id, c.user_id, c.content, c.created_at,
+            u.fname, u.lname, u.avatar
         FROM comments c
         JOIN users u ON u.id = c.user_id
         WHERE c.review_id = ?
@@ -299,9 +291,7 @@ app.delete('/comments/:id', authMiddleware, (req, res) => {
     });
 });
 
-/* =========================
-   LIKES
-========================= */
+/* ========================= LIKES ========================= */
 app.post('/likes/:reviewId', authMiddleware, (req, res) => {
     const { reviewId } = req.params;
     const userId = req.user.id;
@@ -332,15 +322,10 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
     );
 });
 
-/* =========================
-   STATIC FILES
-========================= */
+/* ========================= STATIC FILES ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ SPA fallback — ส่ง homepage.html สำหรับทุก request ที่ไม่ใช่ API
-// วิธีนี้ถูกต้อง: ใช้ Express wildcard ที่รองรับ Express 5
-app.get('/{*path}', (req, res, next) => {
-    // ถ้าเป็น API path → ไม่ต้อง fallback
+app.get('/{*path}', (req, res) => {
     const apiPaths = ['/auth', '/places', '/reviews', '/comments', '/likes'];
     if (apiPaths.some(p => req.path.startsWith(p))) {
         return res.status(404).json({ message: 'API not found' });
@@ -348,7 +333,6 @@ app.get('/{*path}', (req, res, next) => {
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
-// ===== START =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
