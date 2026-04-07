@@ -49,13 +49,19 @@
 
 <script src="api.js"></script>
 <script>
-const CATS = ['ทั้งหมด','วัด','ธรรมชาติ','ชายหาด','เกาะ','น้ำตก','อุทยาน','วัฒนธรรม','ตลาด','พิพิธภัณฑ์'];
-let selectedCategory = 'ทั้งหมด';
-
-function renderCategoryBar() {
-  document.getElementById('category-bar').innerHTML = CATS.map(c =>
-    `<button class="cat-btn ${c===selectedCategory?'active':''}" onclick="selectCategory('${c}')">${c}</button>`
-  ).join('');
+async function renderCategoryBar() {
+  try {
+    const places = await apiFetch('/places');
+    const cats = ['ทั้งหมด', ...new Set(places.map(p => p.category))];
+    document.getElementById('category-bar').innerHTML = cats.map(c =>
+      `<button class="cat-btn ${c===selectedCategory?'active':''}" onclick="selectCategory('${c}')">${c}</button>`
+    ).join('');
+  } catch(e) {
+    const CATS = ['ทั้งหมด','วัด','ธรรมชาติ','ชายหาด','เกาะ','น้ำตก','อุทยาน','วัฒนธรรม','ตลาด','พิพิธภัณฑ์'];
+    document.getElementById('category-bar').innerHTML = CATS.map(c =>
+      `<button class="cat-btn ${c===selectedCategory?'active':''}" onclick="selectCategory('${c}')">${c}</button>`
+    ).join('');
+  }
 }
 
 function selectCategory(cat) {
