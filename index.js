@@ -273,7 +273,7 @@ app.post('/comments', authMiddleware, (req, res) => {
         [review_id, req.user.id, content],
         (err, result) => {
             if (err) return res.status(500).json({ message: err.message });
-            res.status(201).json({ message: 'คอมเม้นสำเร็จ', id: result.insertId });
+            res.status(201).json({ message: 'คอมเมนต์สำเร็จ', id: result.insertId });
         }
     );
 });
@@ -281,7 +281,7 @@ app.post('/comments', authMiddleware, (req, res) => {
 app.delete('/comments/:id', authMiddleware, (req, res) => {
     connection.query('SELECT * FROM comments WHERE id = ?', [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
-        if (!rows[0]) return res.status(404).json({ message: 'ไม่พบคอมเม้น' });
+        if (!rows[0]) return res.status(404).json({ message: 'ไม่พบคอมเมนต์' });
         if (rows[0].user_id !== req.user.id && req.user.role !== 'admin')
             return res.status(403).json({ message: 'ไม่มีสิทธิ์' });
         connection.query('DELETE FROM comments WHERE id = ?', [req.params.id], (err) => {

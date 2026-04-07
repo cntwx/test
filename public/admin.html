@@ -163,7 +163,7 @@
     <div class="admin-tabs">
       <button id="placeBtn" class="tab-btn active" onclick="switchTab('places',this)">🏝️ สถานที่</button>
       <button id="reviewBtn" class="tab-btn" onclick="switchTab('reviews',this)">💬 รีวิว</button>
-      <button id="commentBtn" class="tab-btn" onclick="switchTab('comments',this)">📝 คอมเม้น</button>
+      <button id="commentBtn" class="tab-btn" onclick="switchTab('comments',this)">📝 คอมเมนต์</button>
     </div>
     <div id="tab-places"></div>
     <div id="tab-reviews" style="display:none"></div>
@@ -282,7 +282,7 @@
         </tr>`).join('');
         document.querySelector("#tab-places tbody").innerHTML = tbody;
       }
-      
+
     function openAdd() {
       document.getElementById('modal-title').textContent = '➕ เพิ่มสถานที่ใหม่';
       document.getElementById('edit-id').value = '';
@@ -368,7 +368,7 @@
         }
         document.getElementById('tab-comments').innerHTML = all.length ? `
       <table class="admin-table">
-        <thead><tr><th>ผู้คอมเม้น</th><th>สถานที่</th><th>ในรีวิว</th><th>คอมเม้น</th><th>วันที่</th><th>จัดการ</th></tr></thead>
+        <thead><tr><th>ผู้คอมเมนต์</th><th>สถานที่</th><th>ในรีวิว</th><th>คอมเมนต์</th><th>วันที่</th><th>จัดการ</th></tr></thead>
         <tbody>
           ${all.map(c => `<tr>
             <td>${c.fname} ${c.lname}</td>
@@ -379,12 +379,12 @@
             <td><button class="btn btn-danger btn-sm" onclick="deleteComment(${c.id})">ลบ</button></td>
           </tr>`).join('')}
         </tbody>
-      </table>` : '<div class="no-data">ยังไม่มีคอมเม้น</div>';
+      </table>` : '<div class="no-data">ยังไม่มีคอมเมนต์</div>';
       } catch (e) { }
     }
 
     async function deleteComment(id) {
-      if (!confirm('ต้องการลบคอมเม้นนี้?')) return;
+      if (!confirm('ต้องการลบคอมเมนต์นี้?')) return;
       try { await apiFetch(`/comments/${id}`, { method: 'DELETE' }); showToast('ลบสำเร็จ'); loadComments(); }
       catch (e) { showToast(e.message, 'error'); }
     }

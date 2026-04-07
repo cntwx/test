@@ -196,7 +196,7 @@ function renderReviewCard(r, user) {
         <div id="comments-${r.id}"></div>
         ${user ? `<div class="comment-input-row">
           ${user.avatar ? `<div class="comment-av"><img src="${user.avatar}"></div>` : `<div class="comment-av">${user.fname[0]}</div>`}
-          <input type="text" id="ci-${r.id}" placeholder="เขียนคอมเม้น..." onkeydown="if(event.key==='Enter')submitComment(${r.id})">
+          <input type="text" id="ci-${r.id}" placeholder="เขียนคอมเมนต์..." onkeydown="if(event.key==='Enter')submitComment(${r.id})">
           <button class="btn btn-teal btn-sm" onclick="submitComment(${r.id})">ส่ง</button>
         </div>` : ''}
       </div>
@@ -257,8 +257,8 @@ async function submitComment(reviewId) {
 }
 
 async function deleteComment(id,reviewId) {
-  if(!confirm('ต้องการลบคอมเม้นนี้?'))return;
-  try { await apiFetch(`/comments/${id}`,{method:'DELETE'}); showToast('ลบคอมเม้นสำเร็จ'); loadComments(reviewId); }
+  if(!confirm('ต้องการลบคอมเมนต์นี้?'))return;
+  try { await apiFetch(`/comments/${id}`,{method:'DELETE'}); showToast('ลบคอมเมนต์สำเร็จ'); loadComments(reviewId); }
   catch(e){ showToast(e.message,'error'); }
 }
 
