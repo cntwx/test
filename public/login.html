@@ -63,6 +63,10 @@ if (isLoggedIn()) location.href = 'homepage.html';
 
 updateNav();
 
+if (new URLSearchParams(location.search).get('register') === '1') {
+    switchCard('register');
+}
+
 function switchCard(type) {
   document.getElementById('login-card').style.display = type === 'login' ? '' : 'none';
   document.getElementById('register-card').style.display = type === 'register' ? '' : 'none';

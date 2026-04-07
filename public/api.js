@@ -46,7 +46,7 @@ function updateNav() {
     } else {
         el.innerHTML = `
             <a href="login.html" class="btn btn-outline">เข้าสู่ระบบ</a>
-            <a href="login.html" class="btn btn-gold">สมัครสมาชิก</a>
+            <a href="login.html?register=1" class="btn btn-gold">สมัครสมาชิก</a>
         `;
     }
 }
