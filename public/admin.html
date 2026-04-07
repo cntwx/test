@@ -42,9 +42,9 @@
 
 <div class="admin-content">
   <div class="admin-tabs">
-    <button class="tab-btn active" onclick="switchTab('places',this)">🏝️ สถานที่ (${count})</button>
-    <button class="tab-btn" onclick="switchTab('reviews',this)">💬 รีวิว</button>
-    <button class="tab-btn" onclick="switchTab('comments',this)">📝 คอมเม้น</button>
+    <button id="placeBtn" class="tab-btn active" onclick="switchTab('places',this)">🏝️ สถานที่</button>
+    <button id="reviewBtn" class="tab-btn" onclick="switchTab('reviews',this)">💬 รีวิว</button>
+    <button id="commentBtn" class="tab-btn" onclick="switchTab('comments',this)">📝 คอมเม้น</button>
   </div>
   <div id="tab-places"></div>
   <div id="tab-reviews" style="display:none"></div>
@@ -95,9 +95,13 @@ async function loadPlaces() {
   try {
     const places = await apiFetch('/places');
     document.getElementById('tab-places').innerHTML = `
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;gap:1rem">
+        <input type="text" id="searchPlace"
+        placeholder="🔍 ค้นหาสถานที่..."
+        style="padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;width:250px"
+        oninput="filterPlaces()">
         <button class="btn btn-gold" onclick="openAdd()">➕ เพิ่มสถานที่ใหม่</button>
-      </div>
+        </div>
       <table class="admin-table">
         <thead><tr><th>รูป</th><th>ชื่อสถานที่</th><th>หมวดหมู่</th><th>จังหวัด</th><th>รีวิว</th><th>คะแนน</th><th>จัดการ</th></tr></thead>
         <tbody>
