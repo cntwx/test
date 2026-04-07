@@ -40,7 +40,7 @@ function updateNav() {
                 ${avHtml}
                 <span style="font-size:0.9rem">${user.fname} ${user.lname}</span>
             </div>
-            ${user.role === 'admin' ? `<a href="admin.html" class="btn btn-sm btn-outline">⚙️ Admin</a>` : ''}
+            ${user.role === 'admin' ? `<a href="admin.html" class="btn btn-sm btn-outline">Admin</a>` : ''}
             <button class="btn btn-outline btn-sm" onclick="doLogout()">ออกจากระบบ</button>
         `;
     } else {
