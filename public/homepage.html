@@ -49,6 +49,7 @@
 
 <script src="api.js"></script>
 <script>
+let selectedCategory = 'ทั้งหมด';
 async function renderCategoryBar() {
   try {
     const places = await apiFetch('/places');
