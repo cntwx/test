@@ -183,12 +183,20 @@
 
             try {
 
+                const token = localStorage.getItem("token");
+
                 const res = await fetch("/places", {
                     method: "POST",
+                    headers: {
+                        Authorization: "Bearer " + token
+                    },
                     body: formData
                 });
 
-                if (!res.ok) throw new Error("เพิ่มสถานที่ไม่สำเร็จ");
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message);
+                }
 
                 showToast("เพิ่มสถานที่สำเร็จ");
 
