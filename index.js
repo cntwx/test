@@ -4,12 +4,25 @@ const mysql = require('mysql2');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const multer = require("multer");
 require('dotenv').config();
 
 const app = express();
 
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
+
+// ===== FILE UPLOAD =====
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "public/uploads");
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + "-" + file.originalname);
+    }
+});
+
+const upload = multer({ storage });
 
 // ===== DATABASE =====
 const connection = mysql.createConnection(process.env.DATABASE_URL);
@@ -132,8 +145,9 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
-app.post('/places', authMiddleware, (req, res) => {
-    const { name, province, category, description, image } = req.body;
+app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
+    const { name, province, category, description } = req.body;
+    const image = req.file ? "/uploads/" + req.file.filename : "";
     if (!name || !province || !category || !description)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
@@ -324,6 +338,7 @@ app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
 
 /* ========================= STATIC FILES ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 app.get('/{*path}', (req, res) => {
     const apiPaths = ['/auth', '/places', '/reviews', '/comments', '/likes'];
