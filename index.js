@@ -44,13 +44,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'thailand_review_secret_2024';
 
 /* ========================= AUTH MIDDLEWARE ========================= */
 function authMiddleware(req, res, next) {
-
     const token = req.headers['authorization']?.split(' ')[1];
-
     if (!token) {
         return res.status(401).json({ message: 'กรุณาเข้าสู่ระบบก่อน' });
     }
-
     try {
         req.user = jwt.verify(token, JWT_SECRET);
         next();
@@ -62,122 +59,58 @@ function authMiddleware(req, res, next) {
 /* ========================= AUTH ========================= */
 
 app.post('/auth/register', async (req, res) => {
-
     const { fname, lname, username, password } = req.body;
-
     if (!fname || !lname || !username || !password) {
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
     }
-
-    connection.query(
-        'SELECT id FROM users WHERE username = ?',
-        [username],
-        async (err, rows) => {
-
-            if (err) return res.status(500).json({ message: err.message });
-
-            if (rows.length > 0) {
-                return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+    connection.query('SELECT id FROM users WHERE username = ?', [username], async (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (rows.length > 0) return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+        const hashed = await bcrypt.hash(password, 10);
+        const avatar = `https://ui-avatars.com/api/?name=${fname}+${lname}&background=1A7A6E&color=fff`;
+        connection.query(
+            'INSERT INTO users (fname,lname,username,password,avatar) VALUES (?,?,?,?,?)',
+            [fname, lname, username, hashed, avatar],
+            (err, result) => {
+                if (err) return res.status(500).json({ message: err.message });
+                res.status(201).json({ message: 'สมัครสมาชิกสำเร็จ', userId: result.insertId });
             }
-
-            const hashed = await bcrypt.hash(password, 10);
-
-            const avatar =
-                `https://ui-avatars.com/api/?name=${fname}+${lname}&background=1A7A6E&color=fff`;
-
-            connection.query(
-                'INSERT INTO users (fname,lname,username,password,avatar) VALUES (?,?,?,?,?)',
-                [fname, lname, username, hashed, avatar],
-                (err, result) => {
-
-                    if (err) return res.status(500).json({ message: err.message });
-
-                    res.status(201).json({
-                        message: 'สมัครสมาชิกสำเร็จ',
-                        userId: result.insertId
-                    });
-                }
-            );
-        }
-    );
+        );
+    });
 });
 
 app.post('/auth/login', (req, res) => {
-
     const { username, password } = req.body;
-
-    connection.query(
-        'SELECT * FROM users WHERE username = ?',
-        [username],
-        async (err, rows) => {
-
-            if (err) return res.status(500).json({ message: err.message });
-
-            if (rows.length === 0) {
-                return res.status(401).json({ message: 'ไม่พบผู้ใช้งาน' });
-            }
-
-            const user = rows[0];
-
-            const match = await bcrypt.compare(password, user.password);
-
-            if (!match) {
-                return res.status(401).json({ message: 'รหัสผ่านไม่ถูกต้อง' });
-            }
-
-            const token = jwt.sign(
-                {
-                    id: user.id,
-                    fname: user.fname,
-                    lname: user.lname,
-                    username: user.username,
-                    avatar: user.avatar,
-                    role: user.role || 'user'
-                },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-
-            res.json({
-                message: 'เข้าสู่ระบบสำเร็จ',
-                token,
-                user: {
-                    id: user.id,
-                    fname: user.fname,
-                    lname: user.lname,
-                    username: user.username,
-                    avatar: user.avatar,
-                    role: user.role || 'user'
-                }
-            });
-        }
-    );
+    connection.query('SELECT * FROM users WHERE username = ?', [username], async (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (rows.length === 0) return res.status(401).json({ message: 'ไม่พบผู้ใช้งาน' });
+        const user = rows[0];
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(401).json({ message: 'รหัสผ่านไม่ถูกต้อง' });
+        const token = jwt.sign(
+            { id: user.id, fname: user.fname, lname: user.lname, username: user.username, avatar: user.avatar, role: user.role || 'user' },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        res.json({
+            message: 'เข้าสู่ระบบสำเร็จ', token,
+            user: { id: user.id, fname: user.fname, lname: user.lname, username: user.username, avatar: user.avatar, role: user.role || 'user' }
+        });
+    });
 });
 
 app.get('/auth/me', authMiddleware, (req, res) => {
-
-    connection.query(
-        'SELECT id,fname,lname,username,avatar,role FROM users WHERE id = ?',
-        [req.user.id],
-        (err, rows) => {
-
-            if (err) return res.status(500).json({ message: err.message });
-
-            if (rows.length === 0) {
-                return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
-            }
-
-            res.json(rows[0]);
-        }
-    );
+    connection.query('SELECT id,fname,lname,username,avatar,role FROM users WHERE id = ?', [req.user.id], (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+        res.json(rows[0]);
+    });
 });
 
 /* ========================= PLACES ========================= */
 
 app.get('/places', (req, res) => {
-
     const { search, category } = req.query;
-
     let query = `
         SELECT p.*, 
         ROUND(AVG(r.rating),1) avg_rating,
@@ -186,50 +119,199 @@ app.get('/places', (req, res) => {
         LEFT JOIN reviews r ON r.place_id = p.id
         WHERE 1=1
     `;
-
     const params = [];
-
     if (search) {
         query += ' AND (p.name LIKE ? OR p.province LIKE ?)';
         params.push(`%${search}%`, `%${search}%`);
     }
-
     if (category && category !== 'ทั้งหมด') {
         query += ' AND p.category = ?';
         params.push(category);
     }
-
     query += ' GROUP BY p.id ORDER BY p.id DESC';
-
     connection.query(query, params, (err, results) => {
-
         if (err) return res.status(500).json({ message: err.message });
-
         res.json(results);
     });
 });
 
+/* ★ NEW ★ GET /places/:id — ดึงข้อมูลสถานที่เดียว */
+app.get('/places/:id', (req, res) => {
+    const { id } = req.params;
+    connection.query(
+        `SELECT p.*, 
+         ROUND(AVG(r.rating),1) AS avg_rating,
+         COUNT(r.id) AS review_count
+         FROM places p
+         LEFT JOIN reviews r ON r.place_id = p.id
+         WHERE p.id = ?
+         GROUP BY p.id`,
+        [id],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบสถานที่' });
+            res.json(rows[0]);
+        }
+    );
+});
+
 app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
-
     const { name, province, category, description } = req.body;
-
     const image = req.file ? `/uploads/${req.file.filename}` : "";
-
     if (!name || !province || !category || !description) {
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
     }
-
     connection.query(
         'INSERT INTO places (name,province,category,description,image,created_by) VALUES (?,?,?,?,?,?)',
         [name, province, category, description, image, req.user.id],
         (err, result) => {
-
             if (err) return res.status(500).json({ message: err.message });
+            res.status(201).json({ message: 'เพิ่มสถานที่สำเร็จ', id: result.insertId });
+        }
+    );
+});
 
-            res.status(201).json({
-                message: 'เพิ่มสถานที่สำเร็จ',
-                id: result.insertId
-            });
+/* ========================= REVIEWS ========================= */
+
+/* ★ NEW ★ GET /reviews/place/:placeId — ดึงรีวิวของสถานที่ */
+app.get('/reviews/place/:placeId', (req, res) => {
+    const { placeId } = req.params;
+    connection.query(
+        `SELECT rv.*, u.fname, u.lname, u.avatar,
+         (SELECT COUNT(*) FROM likes lk WHERE lk.review_id = rv.id) AS like_count
+         FROM reviews rv
+         JOIN users u ON u.id = rv.user_id
+         WHERE rv.place_id = ?
+         ORDER BY rv.created_at DESC`,
+        [placeId],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json(rows);
+        }
+    );
+});
+
+/* ★ NEW ★ POST /reviews — เพิ่มรีวิว */
+app.post('/reviews', authMiddleware, (req, res) => {
+    const { place_id, title, content, rating } = req.body;
+    if (!place_id || !title || !content || !rating) {
+        return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
+    }
+    connection.query(
+        'INSERT INTO reviews (place_id, user_id, title, content, rating) VALUES (?,?,?,?,?)',
+        [place_id, req.user.id, title, content, rating],
+        (err, result) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.status(201).json({ message: 'เพิ่มรีวิวสำเร็จ', id: result.insertId });
+        }
+    );
+});
+
+/* ★ NEW ★ DELETE /reviews/:id — ลบรีวิว (เจ้าของหรือ admin) */
+app.delete('/reviews/:id', authMiddleware, (req, res) => {
+    const { id } = req.params;
+    connection.query('SELECT * FROM reviews WHERE id = ?', [id], (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบรีวิว' });
+        const review = rows[0];
+        if (review.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบรีวิวนี้' });
+        }
+        connection.query('DELETE FROM reviews WHERE id = ?', [id], (err) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json({ message: 'ลบรีวิวสำเร็จ' });
+        });
+    });
+});
+
+/* ========================= COMMENTS ========================= */
+
+/* ★ NEW ★ GET /comments/review/:reviewId — ดึง comment ของรีวิว */
+app.get('/comments/review/:reviewId', (req, res) => {
+    const { reviewId } = req.params;
+    connection.query(
+        `SELECT c.*, u.fname, u.lname, u.avatar
+         FROM comments c
+         JOIN users u ON u.id = c.user_id
+         WHERE c.review_id = ?
+         ORDER BY c.created_at ASC`,
+        [reviewId],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json(rows);
+        }
+    );
+});
+
+/* ★ NEW ★ POST /comments — เพิ่ม comment */
+app.post('/comments', authMiddleware, (req, res) => {
+    const { review_id, content } = req.body;
+    if (!review_id || !content) {
+        return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
+    }
+    connection.query(
+        'INSERT INTO comments (review_id, user_id, content) VALUES (?,?,?)',
+        [review_id, req.user.id, content],
+        (err, result) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.status(201).json({ message: 'เพิ่มคอมเมนต์สำเร็จ', id: result.insertId });
+        }
+    );
+});
+
+/* ★ NEW ★ DELETE /comments/:id — ลบ comment (เจ้าของหรือ admin) */
+app.delete('/comments/:id', authMiddleware, (req, res) => {
+    const { id } = req.params;
+    connection.query('SELECT * FROM comments WHERE id = ?', [id], (err, rows) => {
+        if (err) return res.status(500).json({ message: err.message });
+        if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบคอมเมนต์' });
+        const comment = rows[0];
+        if (comment.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบคอมเมนต์นี้' });
+        }
+        connection.query('DELETE FROM comments WHERE id = ?', [id], (err) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json({ message: 'ลบคอมเมนต์สำเร็จ' });
+        });
+    });
+});
+
+/* ========================= LIKES ========================= */
+
+/* ★ NEW ★ GET /likes/:reviewId/check — เช็คว่า user กด like ไปแล้วหรือยัง */
+app.get('/likes/:reviewId/check', authMiddleware, (req, res) => {
+    const { reviewId } = req.params;
+    connection.query(
+        'SELECT id FROM likes WHERE review_id = ? AND user_id = ?',
+        [reviewId, req.user.id],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json({ liked: rows.length > 0 });
+        }
+    );
+});
+
+/* ★ NEW ★ POST /likes/:reviewId — toggle like/unlike */
+app.post('/likes/:reviewId', authMiddleware, (req, res) => {
+    const { reviewId } = req.params;
+    connection.query(
+        'SELECT id FROM likes WHERE review_id = ? AND user_id = ?',
+        [reviewId, req.user.id],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: err.message });
+            if (rows.length > 0) {
+                // unlike
+                connection.query('DELETE FROM likes WHERE review_id = ? AND user_id = ?', [reviewId, req.user.id], (err) => {
+                    if (err) return res.status(500).json({ message: err.message });
+                    res.json({ liked: false });
+                });
+            } else {
+                // like
+                connection.query('INSERT INTO likes (review_id, user_id) VALUES (?,?)', [reviewId, req.user.id], (err) => {
+                    if (err) return res.status(500).json({ message: err.message });
+                    res.json({ liked: true });
+                });
+            }
         }
     );
 });
@@ -237,19 +319,15 @@ app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
 /* ========================= STATIC FILES ========================= */
 
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use("/uploads", express.static(uploadPath));
 
-/* ========================= SPA ROUTE ========================= */
+/* ========================= SPA ROUTE (ต้องอยู่สุดท้ายเสมอ) ========================= */
 
 app.get('/{*path}', (req, res) => {
-
     const apiPaths = ['/auth', '/places', '/reviews', '/comments', '/likes'];
-
     if (apiPaths.some(p => req.path.startsWith(p))) {
         return res.status(404).json({ message: 'API not found' });
     }
-
     res.sendFile(path.join(__dirname, 'public', 'homepage.html'));
 });
 
