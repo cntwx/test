@@ -108,7 +108,6 @@
                     <option value="อื่นๆ">อื่นๆ</option>
                 </select>
 
-                <!-- ช่องให้พิมพ์หมวดหมู่ใหม่ จะซ่อนโดย default -->
                 <input type="text" id="category-other" placeholder="พิมพ์หมวดหมู่ใหม่..."
                     style="display:none;margin-top:6px;">
             </div>
@@ -124,7 +123,7 @@
                 <div class="preview" id="preview"></div>
             </div>
 
-            <button class="btn-submit">
+            <button type="submit" class="btn-submit">
                 เพิ่มสถานที่
             </button>
 
@@ -137,9 +136,17 @@
     <script src="api.js"></script>
 
     <script>
+        // ตรวจสอบ token ตั้งแต่โหลดหน้า
+        window.addEventListener("DOMContentLoaded", () => {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("กรุณาเข้าสู่ระบบก่อน");
+                location.href = "login.html";
+            }
+        });
+
         // ฟังก์ชัน preview รูปภาพ
         function previewImage() {
-
             const file = document.getElementById("imageFile").files[0];
             const preview = document.getElementById("preview");
 
@@ -149,13 +156,10 @@
             }
 
             const reader = new FileReader();
-
             reader.onload = function (e) {
                 preview.innerHTML = `<img src="${e.target.result}">`;
             }
-
             reader.readAsDataURL(file);
-
         }
 
         // ฟังก์ชันแสดง/ซ่อนช่องพิมพ์หมวดหมู่ใหม่
@@ -169,45 +173,61 @@
         document.getElementById("placeForm").onsubmit = async (e) => {
             e.preventDefault();
 
+            const token = localStorage.getItem("token");
+
+            // ตรวจสอบ token ก่อนส่ง
+            if (!token) {
+                showToast("กรุณาเข้าสู่ระบบก่อน", "error");
+                setTimeout(() => location.href = "login.html", 1200);
+                return;
+            }
+
             const file = document.getElementById("imageFile").files[0];
+
+            // จัดการ category อื่นๆ
+            const catSelect = document.getElementById("category").value;
+            const catOther = document.getElementById("category-other").value.trim();
+            const category = (catSelect === "อื่นๆ" && catOther) ? catOther : catSelect;
 
             const formData = new FormData();
             formData.append("name", document.getElementById("name").value);
             formData.append("province", document.getElementById("province").value);
             formData.append("description", document.getElementById("description").value);
-            formData.append("category", document.getElementById("category").value);
+            formData.append("category", category);
 
             if (file) {
                 formData.append("image", file);
             }
 
             try {
-
-                const token = localStorage.getItem("token");
-
                 const res = await fetch("/places", {
                     method: "POST",
                     headers: {
+                        // ❌ ห้ามใส่ Content-Type ตอนส่ง FormData เด็ดขาด
+                        // browser จะจัดการ multipart/form-data boundary เองอัตโนมัติ
                         Authorization: "Bearer " + token
                     },
                     body: formData
                 });
 
+                // ตรวจสอบว่า response เป็น JSON จริงๆ ก่อน parse
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Server ตอบกลับผิดรูปแบบ กรุณาลองใหม่อีกครั้ง");
+                }
+
+                const data = await res.json();
+
                 if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.message);
+                    throw new Error(data.message || "เกิดข้อผิดพลาด");
                 }
 
                 showToast("เพิ่มสถานที่สำเร็จ");
-
-                setTimeout(() => {
-                    location.href = "homepage.html";
-                }, 1200);
+                setTimeout(() => location.href = "homepage.html", 1200);
 
             } catch (err) {
                 showToast(err.message, "error");
             }
-
         };
     </script>
 
