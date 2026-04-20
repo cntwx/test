@@ -24,11 +24,22 @@
   .place-info-box h2 { font-family: 'Kanit', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--dark); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--border); }
   .info-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.95rem; color: var(--mid); line-height: 1.6; }
   .info-label { font-weight: 600; color: var(--dark); white-space: nowrap; min-width: 90px; }
-  .info-row a { color: var(--teal); text-decoration: underline; }
   .place-desc-text { color: var(--mid); line-height: 1.8; font-size: 0.98rem; margin-bottom: 1rem; }
   .place-stats { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
   .rating-big { font-family: 'Kanit', sans-serif; font-size: 2rem; font-weight: 700; color: var(--gold); }
   .stars-lg { font-size: 1.4rem; color: var(--gold); letter-spacing: -1px; }
+
+  /* ปุ่มแชร์สถานที่ */
+  .share-place-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding: 0.6rem 1.4rem;
+    background: var(--teal-dark); color: white;
+    border: none; border-radius: 10px;
+    font-family: 'Sarabun', sans-serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .share-place-btn:hover { background: var(--teal); }
 
   /* WRITE REVIEW */
   .write-review-box { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); }
@@ -71,6 +82,11 @@
   .comment-time { color: var(--muted); font-size: 0.75rem; }
   .del-comment-btn { margin-left: auto; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.8rem; padding: 0 0.3rem; }
   .del-comment-btn:hover { text-decoration: underline; }
+
+  /* ปุ่มแชร์ comment */
+  .share-comment-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.78rem; padding: 0 0.2rem; transition: color 0.1s; }
+  .share-comment-btn:hover { color: var(--teal); }
+
   .comment-input-row { display: flex; gap: 0.5rem; margin-top: 0.6rem; align-items: center; }
   .comment-input-row input { flex: 1; padding: 0.5rem 1rem; border: 1.5px solid var(--border); border-radius: 20px; font-family: 'Sarabun', sans-serif; font-size: 0.88rem; background: white; }
   .comment-input-row input:focus { outline: none; border-color: var(--teal); }
@@ -91,7 +107,7 @@
   <a class="back-link" onclick="history.back()">← กลับ</a>
 
   <div class="place-gallery" id="place-gallery">
-  <div class="gal-img">🏞️</div>
+    <div class="gal-img">🏞️</div>
   </div>
 
   <div class="place-info-box" id="place-info">
@@ -108,10 +124,70 @@
 const placeId = new URLSearchParams(location.search).get('id');
 if (!placeId) location.href = 'homepage.html';
 let pickedRating = 5;
+let placeName = '';
 
+/* ============================================================
+   ฟังก์ชันแชร์หลัก
+   - ถ้าอุปกรณ์รองรับ Web Share API (มือถือ) → เปิด share sheet
+   - ถ้าไม่รองรับ (desktop) → copy ลิงก์ไปคลิปบอร์ด
+   ============================================================ */
+async function doShare({ title, text, url }) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+    } catch(e) {
+      // user กด cancel ไม่ต้องแสดง error
+      if (e.name !== 'AbortError') showToast('แชร์ไม่สำเร็จ', 'error');
+    }
+  } else {
+    // fallback: copy ลิงก์
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('📋 คัดลอกลิงก์แล้ว!');
+    } catch(e) {
+      // fallback สุดท้าย ถ้า clipboard ก็ไม่ได้
+      prompt('คัดลอกลิงก์นี้:', url);
+    }
+  }
+}
+
+/* แชร์สถานที่ */
+function sharePlace() {
+  const url = `${location.origin}/place.html?id=${placeId}`;
+  doShare({
+    title: `${placeName} - TRAVELWEB`,
+    text: `มาดู ${placeName} ใน TRAVELWEB กัน! 🌺`,
+    url
+  });
+}
+
+/* แชร์รีวิว */
+function shareReview(reviewId, reviewTitle) {
+  const url = `${location.origin}/place.html?id=${placeId}#review-${reviewId}`;
+  doShare({
+    title: `รีวิว: ${reviewTitle}`,
+    text: `อ่านรีวิว "${reviewTitle}" ของ ${placeName} ใน TRAVELWEB 🌺`,
+    url
+  });
+}
+
+/* แชร์ comment */
+function shareComment(commentId, authorName, reviewId) {
+  const url = `${location.origin}/place.html?id=${placeId}#review-${reviewId}`;
+  doShare({
+    title: `คอมเมนต์จาก ${authorName}`,
+    text: `อ่านความคิดเห็นของ ${authorName} เกี่ยวกับ ${placeName} ใน TRAVELWEB 🌺`,
+    url
+  });
+}
+
+/* ============================================================
+   LOAD PLACE
+   ============================================================ */
 async function loadPlace() {
   try {
     const p = await apiFetch(`/places/${placeId}`);
+    placeName = p.name;
     document.title = `${p.name} - TRAVELWEB`;
     document.getElementById('place-title').textContent = p.name;
 
@@ -131,12 +207,18 @@ async function loadPlace() {
         <span class="stars-lg">${avg ? renderStars(parseFloat(avg)) : '☆☆☆☆☆'}</span>
         <span style="color:var(--muted);font-size:0.9rem">(${p.review_count} รีวิว)</span>
       </div>
+      <button class="share-place-btn" onclick="sharePlace()">
+        🔗 แชร์สถานที่นี้
+      </button>
     `;
   } catch(e) {
     document.getElementById('place-info').innerHTML = '<p style="color:var(--danger)">❌ ไม่พบสถานที่</p>';
   }
 }
 
+/* ============================================================
+   WRITE REVIEW
+   ============================================================ */
 function renderWriteReview() {
   const user = getCurrentUser();
   const sec = document.getElementById('write-review-section');
@@ -157,6 +239,9 @@ function renderWriteReview() {
     </div>`;
 }
 
+/* ============================================================
+   REVIEWS
+   ============================================================ */
 async function loadReviews() {
   try {
     const reviews = await apiFetch(`/reviews/place/${placeId}`);
@@ -173,13 +258,20 @@ async function loadReviews() {
 
 function renderReviewCard(r, user) {
   const canDelete = user && (user.id === r.user_id || user.role === 'admin');
-  const avHtml = r.avatar ? `<div class="reviewer-av"><img src="${r.avatar}"></div>` : `<div class="reviewer-av">${(r.fname||'?')[0]}</div>`;
+  const avHtml = r.avatar
+    ? `<div class="reviewer-av"><img src="${r.avatar}"></div>`
+    : `<div class="reviewer-av">${(r.fname||'?')[0]}</div>`;
+  // escape สำหรับ onclick string
+  const titleEsc = r.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   return `
     <div class="review-card" id="review-${r.id}">
       <div class="review-top">
         <div class="reviewer">
           ${avHtml}
-          <div><div class="reviewer-name">${r.fname} ${r.lname}</div><div class="reviewer-time">${timeAgo(r.created_at)}</div></div>
+          <div>
+            <div class="reviewer-name">${r.fname} ${r.lname}</div>
+            <div class="reviewer-time">${timeAgo(r.created_at)}</div>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:0.5rem">
           <span class="review-rating">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
@@ -189,84 +281,124 @@ function renderReviewCard(r, user) {
       <div class="review-title">${r.title}</div>
       <div class="review-content">${r.content}</div>
       <div class="review-actions">
-        <button class="like-btn" id="like-btn-${r.id}" onclick="toggleLike(${r.id})">❤️ <span id="like-count-${r.id}">${r.like_count}</span></button>
-        <button class="share-btn" onclick="shareReview(${r.id})">🔗 แชร์</button>
+        <button class="like-btn" id="like-btn-${r.id}" onclick="toggleLike(${r.id})">
+          ❤️ <span id="like-count-${r.id}">${r.like_count}</span>
+        </button>
+        <button class="share-btn" onclick="shareReview(${r.id}, '${titleEsc}')">
+          🔗 แชร์รีวิว
+        </button>
       </div>
       <div class="comments-section">
         <div id="comments-${r.id}"></div>
         ${user ? `<div class="comment-input-row">
-          ${user.avatar ? `<div class="comment-av"><img src="${user.avatar}"></div>` : `<div class="comment-av">${user.fname[0]}</div>`}
-          <input type="text" id="ci-${r.id}" placeholder="เขียนคอมเมนต์..." onkeydown="if(event.key==='Enter')submitComment(${r.id})">
+          ${user.avatar
+            ? `<div class="comment-av"><img src="${user.avatar}"></div>`
+            : `<div class="comment-av">${user.fname[0]}</div>`}
+          <input type="text" id="ci-${r.id}" placeholder="เขียนคอมเมนต์..."
+            onkeydown="if(event.key==='Enter')submitComment(${r.id})">
           <button class="btn btn-teal btn-sm" onclick="submitComment(${r.id})">ส่ง</button>
         </div>` : ''}
       </div>
     </div>`;
 }
 
-function pickStar(n) { pickedRating = n; document.querySelectorAll('#star-picker .sp').forEach((el,i)=>el.classList.toggle('active',i<n)); }
+function pickStar(n) {
+  pickedRating = n;
+  document.querySelectorAll('#star-picker .sp').forEach((el,i) => el.classList.toggle('active', i < n));
+}
 
 async function submitReview() {
   const title = document.getElementById('rv-title')?.value.trim();
   const content = document.getElementById('rv-content')?.value.trim();
-  if (!title||!content) { showToast('กรุณากรอกข้อมูลให้ครบ','error'); return; }
+  if (!title || !content) { showToast('กรุณากรอกข้อมูลให้ครบ','error'); return; }
   try {
-    await apiFetch('/reviews',{method:'POST',body:JSON.stringify({place_id:placeId,title,content,rating:pickedRating})});
-    showToast('โพสรีวิวสำเร็จ! 🎉'); loadPlace(); loadReviews();
+    await apiFetch('/reviews', { method:'POST', body:JSON.stringify({ place_id:placeId, title, content, rating:pickedRating }) });
+    showToast('โพสรีวิวสำเร็จ! 🎉');
+    loadPlace();
+    loadReviews();
   } catch(e) { showToast(e.message,'error'); }
 }
 
 async function deleteReview(id) {
   if (!confirm('ต้องการลบรีวิวนี้?')) return;
-  try { await apiFetch(`/reviews/${id}`,{method:'DELETE'}); showToast('ลบสำเร็จ'); loadReviews(); }
+  try { await apiFetch(`/reviews/${id}`, { method:'DELETE' }); showToast('ลบสำเร็จ'); loadReviews(); }
   catch(e) { showToast(e.message,'error'); }
 }
 
 async function checkLike(reviewId) {
-  try { const d=await apiFetch(`/likes/${reviewId}/check`); if(d.liked) document.getElementById(`like-btn-${reviewId}`)?.classList.add('liked'); } catch(e){}
+  try {
+    const d = await apiFetch(`/likes/${reviewId}/check`);
+    if (d.liked) document.getElementById(`like-btn-${reviewId}`)?.classList.add('liked');
+  } catch(e) {}
 }
 
 async function toggleLike(reviewId) {
-  if (!isLoggedIn()) { location.href=`login.html?redirect=place.html%3Fid%3D${placeId}`; return; }
+  if (!isLoggedIn()) { location.href = `login.html?redirect=place.html%3Fid%3D${placeId}`; return; }
   try {
-    const d=await apiFetch(`/likes/${reviewId}`,{method:'POST'});
-    const btn=document.getElementById(`like-btn-${reviewId}`); const c=document.getElementById(`like-count-${reviewId}`);
-    if(d.liked){btn.classList.add('liked');c.textContent=parseInt(c.textContent)+1;}
-    else{btn.classList.remove('liked');c.textContent=parseInt(c.textContent)-1;}
-  } catch(e){ showToast(e.message,'error'); }
+    const d = await apiFetch(`/likes/${reviewId}`, { method:'POST' });
+    const btn = document.getElementById(`like-btn-${reviewId}`);
+    const c = document.getElementById(`like-count-${reviewId}`);
+    if (d.liked) { btn.classList.add('liked'); c.textContent = parseInt(c.textContent) + 1; }
+    else { btn.classList.remove('liked'); c.textContent = parseInt(c.textContent) - 1; }
+  } catch(e) { showToast(e.message,'error'); }
 }
 
+/* ============================================================
+   COMMENTS
+   ============================================================ */
 async function loadComments(reviewId) {
   try {
-    const comments=await apiFetch(`/comments/review/${reviewId}`);
-    const user=getCurrentUser(); const el=document.getElementById(`comments-${reviewId}`); if(!el)return;
-    el.innerHTML=comments.map(c=>{
-      const canDel=user&&(user.id===c.user_id||user.role==='admin');
-      const av=c.avatar?`<div class="comment-av"><img src="${c.avatar}"></div>`:`<div class="comment-av">${(c.fname||'?')[0]}</div>`;
-      return `<div class="comment-item">${av}<div class="comment-bubble">
-        <div class="cb-head"><strong>${c.fname} ${c.lname}</strong><span class="comment-time">${timeAgo(c.created_at)}</span>
-        ${canDel?`<button class="del-comment-btn" onclick="deleteComment(${c.id},${reviewId})">✕ ลบ</button>`:''}</div>
-        <div>${c.content}</div></div></div>`;
+    const comments = await apiFetch(`/comments/review/${reviewId}`);
+    const user = getCurrentUser();
+    const el = document.getElementById(`comments-${reviewId}`);
+    if (!el) return;
+    el.innerHTML = comments.map(c => {
+      const canDel = user && (user.id === c.user_id || user.role === 'admin');
+      const av = c.avatar
+        ? `<div class="comment-av"><img src="${c.avatar}"></div>`
+        : `<div class="comment-av">${(c.fname||'?')[0]}</div>`;
+      const nameEsc = (c.fname + ' ' + c.lname).replace(/'/g, "\\'");
+      return `<div class="comment-item">${av}
+        <div class="comment-bubble">
+          <div class="cb-head">
+            <strong>${c.fname} ${c.lname}</strong>
+            <span class="comment-time">${timeAgo(c.created_at)}</span>
+            <button class="share-comment-btn"
+              onclick="shareComment(${c.id}, '${nameEsc}', ${reviewId})"
+              title="แชร์คอมเมนต์นี้">🔗</button>
+            ${canDel ? `<button class="del-comment-btn" onclick="deleteComment(${c.id},${reviewId})">✕ ลบ</button>` : ''}
+          </div>
+          <div>${c.content}</div>
+        </div>
+      </div>`;
     }).join('');
-  } catch(e){}
+  } catch(e) {}
 }
 
 async function submitComment(reviewId) {
-  const input=document.getElementById(`ci-${reviewId}`); const content=input?.value.trim(); if(!content)return;
-  try { await apiFetch('/comments',{method:'POST',body:JSON.stringify({review_id:reviewId,content})}); input.value=''; loadComments(reviewId); }
-  catch(e){ showToast(e.message,'error'); }
+  const input = document.getElementById(`ci-${reviewId}`);
+  const content = input?.value.trim();
+  if (!content) return;
+  try {
+    await apiFetch('/comments', { method:'POST', body:JSON.stringify({ review_id:reviewId, content }) });
+    input.value = '';
+    loadComments(reviewId);
+  } catch(e) { showToast(e.message,'error'); }
 }
 
-async function deleteComment(id,reviewId) {
-  if(!confirm('ต้องการลบคอมเมนต์นี้?'))return;
-  try { await apiFetch(`/comments/${id}`,{method:'DELETE'}); showToast('ลบคอมเมนต์สำเร็จ'); loadComments(reviewId); }
-  catch(e){ showToast(e.message,'error'); }
+async function deleteComment(id, reviewId) {
+  if (!confirm('ต้องการลบคอมเมนต์นี้?')) return;
+  try {
+    await apiFetch(`/comments/${id}`, { method:'DELETE' });
+    showToast('ลบคอมเมนต์สำเร็จ');
+    loadComments(reviewId);
+  } catch(e) { showToast(e.message,'error'); }
 }
 
-function shareReview(id) {
-  navigator.clipboard?.writeText(`${location.origin}/place.html?id=${placeId}#review-${id}`).then(()=>showToast('คัดลอกลิงก์แล้ว!'));
-}
-
-updateNav(); loadPlace(); renderWriteReview(); loadReviews();
+updateNav();
+loadPlace();
+renderWriteReview();
+loadReviews();
 </script>
 </body>
 </html>
