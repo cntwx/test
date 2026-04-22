@@ -244,13 +244,23 @@ async function loadPlaces() {
 }
 
 function renderPlacesTable(places) {
-  document.getElementById('tab-places').innerHTML = `
-    <div style="display:flex;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
-      <input type="text" id="searchPlace" placeholder="🔍 ค้นหาสถานที่..."
-        style="padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;min-width:220px"
-        oninput="filterPlaces()">
-      <button class="btn btn-gold" onclick="openAdd()">➕ เพิ่มสถานที่ใหม่</button>
-    </div>
+  // แยก search bar ออก — render แค่ตารางอย่างเดียว
+  let container = document.getElementById('tab-places');
+  
+  // สร้าง search bar ครั้งแรกครั้งเดียว
+  if (!document.getElementById('searchPlace')) {
+    container.innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
+        <input type="text" id="searchPlace" placeholder="🔍 ค้นหาสถานที่..."
+          style="padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;min-width:220px"
+          oninput="filterPlaces()">
+        <button class="btn btn-gold" onclick="openAdd()">➕ เพิ่มสถานที่ใหม่</button>
+      </div>
+      <div id="places-table-body"></div>`;
+  }
+
+  // render เฉพาะตาราง
+  document.getElementById('places-table-body').innerHTML = `
     <table class="admin-table">
       <thead><tr><th>รูป</th><th>ชื่อสถานที่</th><th>หมวดหมู่</th><th>จังหวัด</th><th>รีวิว</th><th>คะแนน</th><th>จัดการ</th></tr></thead>
       <tbody>${places.map(p => `<tr>
