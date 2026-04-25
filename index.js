@@ -5,7 +5,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const multer = require("multer");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 require('dotenv').config();
 
 const app = express();
@@ -13,15 +14,23 @@ const app = express();
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
-/* ========================= CREATE UPLOAD FOLDER ========================= */
-const uploadPath = path.join(__dirname, "public/uploads");
-if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-
-/* ========================= MULTER CONFIG ========================= */
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadPath),
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+/* ========================= CLOUDINARY CONFIG ========================= */
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+/* ========================= MULTER → CLOUDINARY ========================= */
+const storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder: "travelweb",
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        transformation: [{ width: 1200, quality: "auto", fetch_format: "auto" }],
+    },
+});
+
 const upload = multer({ storage });
 
 /* ========================= DATABASE ========================= */
@@ -59,7 +68,7 @@ app.post('/auth/register', async (req, res) => {
 
     connection.query('SELECT id FROM users WHERE username = ?', [username], async (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
-        if (rows.length > 0) return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+        if (rows.length > 0) return res.status(400).json({ message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' });
         const hashed = await bcrypt.hash(password, 10);
         const avatar = `https://ui-avatars.com/api/?name=${fname}+${lname}&background=1A7A6E&color=fff`;
         connection.query(
@@ -136,11 +145,15 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
+/* POST /places — รูปอัปโหลดไป Cloudinary → ได้ URL กลับมาเก็บใน DB */
 app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
-    const { name, province, category, description, image: imageUrl } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : (imageUrl || "");
+    const { name, province, category, description } = req.body;
+    // req.file.path = Cloudinary URL เต็ม เช่น https://res.cloudinary.com/dxeai0ecp/...
+    const image = req.file ? req.file.path : "";
+
     if (!name || !province || !category || !description)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
+
     connection.query(
         'INSERT INTO places (name,province,category,description,image,created_by) VALUES (?,?,?,?,?,?)',
         [name, province, category, description, image, req.user.id],
@@ -151,35 +164,44 @@ app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
     );
 });
 
+/* PUT /places/:id — ถ้ามีรูปใหม่ให้อัปโหลด Cloudinary ถ้าไม่มีให้คงรูปเดิม */
 app.put('/places/:id', authMiddleware, upload.single("image"), (req, res) => {
     const { id } = req.params;
-    const { name, province, category, description, image: imageUrl } = req.body;
+    const { name, province, category, description } = req.body;
     if (!name || !province || !category || !description)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
 
-    // เช็คว่าเป็นเจ้าของหรือ admin ก่อนแก้ไข
     connection.query('SELECT created_by FROM places WHERE id = ?', [id], (err, rows) => {
         if (err) return res.status(500).json({ message: err.message });
         if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบสถานที่' });
         if (rows[0].created_by !== req.user.id && req.user.role !== 'admin')
             return res.status(403).json({ message: 'ไม่มีสิทธิ์แก้ไขสถานที่นี้' });
 
-        const image = req.file ? `/uploads/${req.file.filename}` : (imageUrl || null);
-        const sql = image !== null
-            ? 'UPDATE places SET name=?,province=?,category=?,description=?,image=? WHERE id=?'
-            : 'UPDATE places SET name=?,province=?,category=?,description=? WHERE id=?';
-        const params = image !== null
-            ? [name, province, category, description, image, id]
-            : [name, province, category, description, id];
-
-        connection.query(sql, params, (err) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.json({ message: 'แก้ไขสถานที่สำเร็จ' });
-        });
+        if (req.file) {
+            // มีรูปใหม่ → ใช้ Cloudinary URL จาก req.file.path
+            connection.query(
+                'UPDATE places SET name=?,province=?,category=?,description=?,image=? WHERE id=?',
+                [name, province, category, description, req.file.path, id],
+                (err) => {
+                    if (err) return res.status(500).json({ message: err.message });
+                    res.json({ message: 'แก้ไขสถานที่สำเร็จ' });
+                }
+            );
+        } else {
+            // ไม่มีรูปใหม่ → คงรูปเดิมไว้
+            connection.query(
+                'UPDATE places SET name=?,province=?,category=?,description=? WHERE id=?',
+                [name, province, category, description, id],
+                (err) => {
+                    if (err) return res.status(500).json({ message: err.message });
+                    res.json({ message: 'แก้ไขสถานที่สำเร็จ' });
+                }
+            );
+        }
     });
 });
 
-/* ★ ลบสถานที่ — เจ้าของหรือ admin เท่านั้น */
+/* DELETE /places/:id — เจ้าของหรือ admin เท่านั้น */
 app.delete('/places/:id', authMiddleware, (req, res) => {
     const { id } = req.params;
     connection.query('SELECT created_by FROM places WHERE id = ?', [id], (err, rows) => {
@@ -329,7 +351,6 @@ app.post('/likes/:reviewId', authMiddleware, (req, res) => {
 
 /* ========================= STATIC FILES ========================= */
 app.use(express.static(path.join(__dirname, 'public')));
-app.use("/uploads", express.static(uploadPath));
 
 /* ========================= SPA ROUTE ========================= */
 app.get('/{*path}', (req, res) => {
