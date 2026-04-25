@@ -4,9 +4,9 @@ const mysql = require('mysql2');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("cloudinary").v2;
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 const app = express();
@@ -25,9 +25,9 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary,
     params: {
-        folder: "travelweb",
-        allowed_formats: ["jpg", "jpeg", "png", "webp"],
-        transformation: [{ width: 1200, quality: "auto", fetch_format: "auto" }],
+        folder: 'travelweb',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [{ width: 1200, quality: 'auto', fetch_format: 'auto' }],
     },
 });
 
@@ -114,7 +114,7 @@ app.get('/auth/me', authMiddleware, (req, res) => {
 app.get('/places', (req, res) => {
     const { search, category } = req.query;
     let query = `
-        SELECT p.*, 
+        SELECT p.*,
         ROUND(AVG(r.rating),1) avg_rating,
         COUNT(r.id) review_count
         FROM places p
@@ -145,15 +145,11 @@ app.get('/places/:id', (req, res) => {
     );
 });
 
-/* POST /places — รูปอัปโหลดไป Cloudinary → ได้ URL กลับมาเก็บใน DB */
-app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
+app.post('/places', authMiddleware, upload.single('image'), (req, res) => {
     const { name, province, category, description } = req.body;
-    // req.file.path = Cloudinary URL เต็ม เช่น https://res.cloudinary.com/dxeai0ecp/...
-    const image = req.file ? req.file.path : "";
-
+    const image = req.file ? req.file.path : '';
     if (!name || !province || !category || !description)
         return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' });
-
     connection.query(
         'INSERT INTO places (name,province,category,description,image,created_by) VALUES (?,?,?,?,?,?)',
         [name, province, category, description, image, req.user.id],
@@ -164,8 +160,7 @@ app.post('/places', authMiddleware, upload.single("image"), (req, res) => {
     );
 });
 
-/* PUT /places/:id — ถ้ามีรูปใหม่ให้อัปโหลด Cloudinary ถ้าไม่มีให้คงรูปเดิม */
-app.put('/places/:id', authMiddleware, upload.single("image"), (req, res) => {
+app.put('/places/:id', authMiddleware, upload.single('image'), (req, res) => {
     const { id } = req.params;
     const { name, province, category, description } = req.body;
     if (!name || !province || !category || !description)
@@ -178,7 +173,6 @@ app.put('/places/:id', authMiddleware, upload.single("image"), (req, res) => {
             return res.status(403).json({ message: 'ไม่มีสิทธิ์แก้ไขสถานที่นี้' });
 
         if (req.file) {
-            // มีรูปใหม่ → ใช้ Cloudinary URL จาก req.file.path
             connection.query(
                 'UPDATE places SET name=?,province=?,category=?,description=?,image=? WHERE id=?',
                 [name, province, category, description, req.file.path, id],
@@ -188,7 +182,6 @@ app.put('/places/:id', authMiddleware, upload.single("image"), (req, res) => {
                 }
             );
         } else {
-            // ไม่มีรูปใหม่ → คงรูปเดิมไว้
             connection.query(
                 'UPDATE places SET name=?,province=?,category=?,description=? WHERE id=?',
                 [name, province, category, description, id],
@@ -201,7 +194,6 @@ app.put('/places/:id', authMiddleware, upload.single("image"), (req, res) => {
     });
 });
 
-/* DELETE /places/:id — เจ้าของหรือ admin เท่านั้น */
 app.delete('/places/:id', authMiddleware, (req, res) => {
     const { id } = req.params;
     connection.query('SELECT created_by FROM places WHERE id = ?', [id], (err, rows) => {
@@ -209,7 +201,6 @@ app.delete('/places/:id', authMiddleware, (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: 'ไม่พบสถานที่' });
         if (rows[0].created_by !== req.user.id && req.user.role !== 'admin')
             return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบสถานที่นี้' });
-
         connection.query('DELETE FROM places WHERE id = ?', [id], (err) => {
             if (err) return res.status(500).json({ message: err.message });
             res.json({ message: 'ลบสถานที่สำเร็จ' });
