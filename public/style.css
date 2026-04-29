@@ -12,18 +12,10 @@ a { text-decoration: none; color: inherit; }
 
 /* NAVBAR */
 nav {
-  background: var(--teal-dark);
+  background: var(--teal-dark); padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px; position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 16px rgba(0,0,0,0.18);
-}
-
-.nav-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 .nav-logo { font-family: 'Kanit', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--gold-light); cursor: pointer; }
 .nav-logo span { color: white; }
