@@ -2,13 +2,13 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TRAVELWEB - รีวิวสถานที่ท่องเที่ยวไทย</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> // ปรับให้เหมาะกับมือถือ, ipad, หรือหน้าจอขนาดต่างๆ
+<title>TRAVELWEB - รีวิวสถานที่ท่องเที่ยวไทย</title> //ชื่อเว็บ
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
   /* ปุ่มลบบน card */
-  .place-card { position: relative; }
+  .place-card { position: relative; } /* เพื่อให้ปุ่มลบอยู่ในตำแหน่งที่ถูกต้อง */
   .card-delete-btn {
     position: absolute;
     top: 8px; right: 8px;
@@ -23,7 +23,7 @@
     z-index: 10;
     backdrop-filter: blur(2px);
     transition: background 0.15s;
-    display: none; /* ซ่อนโดย default แสดงเฉพาะเจ้าของ */
+    display: none; /* ซ่อนโดย default จะแสดงเฉพาะเจ้าของและ admin */
   }
   .card-delete-btn:hover { background: rgba(185,28,28,1); }
 </style>
